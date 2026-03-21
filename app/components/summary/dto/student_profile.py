@@ -583,10 +583,26 @@ class StudentProfile:
         )
 
         school_data = academic_data.get("school_profile")
+        _SCHOOL_TYPE_MAP = {
+            "university": "public",
+            "college": "public",
+            "public university": "public",
+            "private university": "private",
+            "international school": "international",
+            "gifted school": "specialized",
+            "specialized school": "specialized",
+        }
         school_profile = (
             SchoolProfile(
                 school_name=school_data["school_name"],
-                school_type=SchoolType(school_data.get("school_type", "public")),
+                school_type=SchoolType(
+                    _SCHOOL_TYPE_MAP.get(
+                        str(school_data.get("school_type", "public")).lower(),
+                        school_data.get("school_type", "public").lower()
+                        if school_data.get("school_type", "public").lower() in {"public", "private", "specialized", "international"}
+                        else "public",
+                    )
+                ),
                 location=school_data.get("location"),
                 country=school_data.get("country"),
                 description=school_data.get("description"),

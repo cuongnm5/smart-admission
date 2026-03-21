@@ -19,7 +19,7 @@ interface AnalysisScreenProps {
   /** If true, step 1 is shown as already done (came from manual form) */
   extractionComplete?: boolean;
   onNeedManualInput?: (partial: StudentMatchRequest, missing: string[]) => void;
-  onComplete: (result: UniversityPipelineResponse | null) => void;
+  onComplete: (result: UniversityPipelineResponse | null, extractedRequest?: StudentMatchRequest) => void;
 }
 
 const DEFAULT_MISSING = ["intended_major", "academic.gpa", "financial.budget_per_year", "test_scores"];
@@ -93,13 +93,13 @@ export default function AnalysisScreen({
       .then((result) => {
         apiResultRef.current = result;
         apiDoneRef.current = true;
-        if (animDoneRef.current) onComplete(result);
+        if (animDoneRef.current) onComplete(result, extractedRequestRef.current ?? undefined);
       })
       .catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : String(err);
         setError(msg);
         apiDoneRef.current = true;
-        if (animDoneRef.current) onComplete(null);
+        if (animDoneRef.current) onComplete(null, extractedRequestRef.current ?? undefined);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
@@ -123,7 +123,7 @@ export default function AnalysisScreen({
     const timeout = setTimeout(() => {
       clearInterval(interval);
       animDoneRef.current = true;
-      if (apiDoneRef.current) onComplete(apiResultRef.current);
+      if (apiDoneRef.current) onComplete(apiResultRef.current, extractedRequestRef.current ?? undefined);
     }, TOTAL_ANALYSIS_DURATION + 500);
 
     return () => { clearInterval(interval); clearTimeout(timeout); };

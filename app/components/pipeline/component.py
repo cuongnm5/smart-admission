@@ -27,10 +27,9 @@ class UniversityPipelineComponent:
         id_to_university: dict[str, UniversityProfile] = {
             build_university_id(university): university for university in self._repository.list_universities()
         }
-        top_2_ids = top_20_ids[:2]
-        top_2_universities = [id_to_university[university_id] for university_id in top_2_ids if university_id in id_to_university]
+        top_universities = [id_to_university[university_id] for university_id in top_20_ids if university_id in id_to_university]
 
-        stage_2_result = self._summary_component.analyze(request, top_2_universities)
+        stage_2_result = self._summary_component.analyze(request, top_universities)
 
         return UniversityPipelineResponse(
             stage_1_matching=StageOneMatchingOutput(
@@ -38,7 +37,7 @@ class UniversityPipelineComponent:
                 meta=stage_1.meta,
             ),
             stage_2_analysis=StageTwoAnalysisOutput(
-                analyzed_university_ids=top_2_ids,
+                analyzed_university_ids=top_20_ids,
                 matched_university_id=stage_2_result.get("matched_university_id"),
                 ranking_summary=stage_2_result.get("ranking_summary", []),
                 detailed_analysis=stage_2_result.get("detailed_analysis", {}),

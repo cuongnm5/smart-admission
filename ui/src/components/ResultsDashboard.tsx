@@ -1,16 +1,160 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { ArrowUpRight, TrendingUp, Lightbulb, GraduationCap, Trophy, Users, Sparkles, RotateCcw } from "lucide-react";
+import { ArrowUpRight, TrendingUp, Lightbulb, GraduationCap, Trophy, Users, Sparkles, RotateCcw, BookOpen, DollarSign, Award, FlaskConical, ChevronDown } from "lucide-react";
 import type { StudentProfile, SchoolResult, ProfileStrength, ImprovementSuggestion } from "@/lib/admissionEngine";
 import { getTopSchools, calculateProfileStrength, getImprovementSuggestions } from "@/lib/admissionEngine";
-import { pipelineResponseToSchools, type UniversityPipelineResponse } from "@/lib/api";
+import { pipelineResponseToSchools, type UniversityPipelineResponse, type StudentMatchRequest } from "@/lib/api";
 import SchoolCard from "./SchoolCard";
 import WhatIfSimulator from "./WhatIfSimulator";
 
 interface ResultsDashboardProps {
   profile: StudentProfile;
   apiResult: UniversityPipelineResponse | null;
+  parsedRequest?: StudentMatchRequest | null;
   onReset: () => void;
+}
+
+function Tag({ children, color = "default" }: { children: React.ReactNode; color?: "default" | "accent" | "green" | "yellow" }) {
+  const cls = {
+    default: "bg-muted text-muted-foreground",
+    accent: "bg-accent/10 text-accent",
+    green: "bg-emerald-500/10 text-emerald-400",
+    yellow: "bg-amber-500/10 text-amber-400",
+  }[color];
+  return (
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cls}`}>
+      {children}
+    </span>
+  );
+}
+
+function ProfileSnapshot({ profile, request }: { profile: StudentProfile; request?: StudentMatchRequest | null }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const gpa = profile.gpa;
+  const sat = profile.sat;
+  const ielts = profile.ielts || request?.test_scores?.english_tests?.[0]?.score;
+  const budget = request?.financial?.budget_per_year;
+  const currency = request?.financial?.currency ?? "USD";
+  const needScholarship = request?.financial?.need_scholarship;
+
+  const activities = profile.activities.length
+    ? profile.activities
+    : (request?.extracurriculars ?? []).map((e) => e.activity_name);
+
+  const awards = profile.awards.length
+    ? profile.awards
+    : (request?.awards ?? []).map((a) => a.award_name);
+
+  const leadership = profile.leadershipRoles > 0
+    ? profile.leadershipRoles
+    : (request?.leadership ?? []).length;
+
+  const research = profile.researchExperience || (request?.projects ?? []).length > 0;
+
+  const stat = (label: string, value: string | number | null | undefined, suffix = "") =>
+    value != null && value !== 0 && value !== "" ? (
+      <div className="flex flex-col gap-0.5">
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className="text-sm font-bold font-mono text-foreground">{value}{suffix}</span>
+      </div>
+    ) : null;
+
+  return (
+    <div className="bg-card rounded-2xl border border-border overflow-hidden">
+      {/* Header row — always visible */}
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center gap-4 px-6 py-4 text-left hover:bg-muted/20 transition-colors"
+      >
+        <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+          <BookOpen className="w-4 h-4 text-accent" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground">{profile.name || "Your Profile"}</p>
+          <p className="text-xs text-muted-foreground">{profile.major} · GPA {gpa.toFixed(2)} · SAT {sat}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="text-xs text-muted-foreground hidden sm:inline">
+            {expanded ? "Hide details" : "View extracted data"}
+          </span>
+          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
+        </div>
+      </button>
+
+      {/* Expanded details */}
+      {expanded && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.25 }}
+          className="border-t border-border"
+        >
+          <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Academic */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-3">
+                <GraduationCap className="w-3.5 h-3.5 text-accent" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Academic</span>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                {stat("GPA", gpa.toFixed(2))}
+                {stat("SAT", sat)}
+                {stat("IELTS", ielts)}
+              </div>
+            </div>
+
+            {/* Extracurriculars */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-3">
+                <Award className="w-3.5 h-3.5 text-accent" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Activities & Awards</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {activities.slice(0, 5).map((a) => <Tag key={a}>{a}</Tag>)}
+                {activities.length > 5 && <Tag>+{activities.length - 5} more</Tag>}
+                {awards.slice(0, 3).map((a) => <Tag key={a} color="yellow">{a}</Tag>)}
+              </div>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {leadership > 0 && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Users className="w-3 h-3" /> {leadership} leadership role{leadership !== 1 ? "s" : ""}
+                  </div>
+                )}
+                {research && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <FlaskConical className="w-3 h-3" /> Research experience
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Financial */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-3">
+                <DollarSign className="w-3.5 h-3.5 text-accent" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Financial</span>
+              </div>
+              {budget ? (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Annual Budget</span>
+                  <span className="text-sm font-bold font-mono text-foreground">
+                    {currency} {budget.toLocaleString()}
+                  </span>
+                </div>
+              ) : (
+                <span className="text-xs text-muted-foreground">Not specified</span>
+              )}
+              {needScholarship && (
+                <Tag color="green">Financial aid requested</Tag>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
 }
 
 function ScoreRing({ value, label, color }: { value: number; label: string; color: string }) {
@@ -40,7 +184,7 @@ function ScoreRing({ value, label, color }: { value: number; label: string; colo
   );
 }
 
-export default function ResultsDashboard({ profile, apiResult, onReset }: ResultsDashboardProps) {
+export default function ResultsDashboard({ profile, apiResult, parsedRequest, onReset }: ResultsDashboardProps) {
   const [simProfile, setSimProfile] = useState(profile);
   const strength = useMemo(() => calculateProfileStrength(simProfile), [simProfile]);
   const isSimulating = simProfile.sat !== profile.sat || simProfile.gpa !== profile.gpa || simProfile.leadershipRoles !== profile.leadershipRoles;
@@ -87,6 +231,11 @@ export default function ResultsDashboard({ profile, apiResult, onReset }: Result
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-10">
+        {/* Extracted Profile Snapshot */}
+        <motion.div {...fadeUp}>
+          <ProfileSnapshot profile={profile} request={parsedRequest} />
+        </motion.div>
+
         {/* Section 1: Profile Summary */}
         <motion.section {...fadeUp}>
           <h2 className="text-lg font-bold text-foreground mb-1 flex items-center gap-2">

@@ -113,6 +113,59 @@ class ProfileNormalizer:
     @staticmethod
     def _normalize_major(major: str) -> str:
         compact = re.sub(r"\s+", " ", major).strip()
+        key = compact.lower()
+        # Map common student major names to the broad categories used in the university data
+        _ALIASES: dict[str, str] = {
+            "information technology": "Computer Science",
+            "software engineering": "Computer Science",
+            "computer engineering": "Computer Science",
+            "data science": "Computer Science",
+            "artificial intelligence": "Computer Science",
+            "machine learning": "Computer Science",
+            "cybersecurity": "Computer Science",
+            "network engineering": "Computer Science",
+            "it": "Computer Science",
+            "electrical engineering": "Engineering",
+            "mechanical engineering": "Engineering",
+            "civil engineering": "Engineering",
+            "chemical engineering": "Engineering",
+            "industrial engineering": "Engineering",
+            "biomedical engineering": "Engineering",
+            "aerospace engineering": "Engineering",
+            "business administration": "Business & Marketing",
+            "business management": "Business & Marketing",
+            "marketing": "Business & Marketing",
+            "finance": "Business & Marketing",
+            "accounting": "Business & Marketing",
+            "economics": "Business & Marketing",
+            "medicine": "Health Professions",
+            "nursing": "Health Professions",
+            "pharmacy": "Health Professions",
+            "public health": "Health Professions",
+            "biology": "Biological Sciences",
+            "biochemistry": "Biological Sciences",
+            "chemistry": "Physical Sciences",
+            "physics": "Physical Sciences",
+            "mathematics": "Mathematics & Statistics",
+            "statistics": "Mathematics & Statistics",
+            "law": "Legal Studies",
+            "sociology": "Social Sciences",
+            "political science": "Social Sciences",
+            "international relations": "Social Sciences",
+            "communication": "Communication",
+            "journalism": "Communication",
+            "architecture": "Architecture",
+            "education": "Education",
+            "environmental science": "Natural Resources",
+            "agriculture": "Agriculture",
+        }
+        # Direct lookup
+        if key in _ALIASES:
+            return _ALIASES[key]
+        # Partial match: student major contains an alias key or vice-versa
+        for alias_key, mapped in _ALIASES.items():
+            if alias_key in key or key in alias_key:
+                return mapped
         return compact.title()
 
     @staticmethod
