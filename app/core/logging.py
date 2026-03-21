@@ -49,12 +49,19 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(payload)
 
 
-def configure_logging() -> None:
+def configure_logging(log_file: str = "app.log") -> None:
     root_logger = logging.getLogger()
     if root_logger.handlers:
         return
 
-    handler = logging.StreamHandler()
-    handler.setFormatter(JsonFormatter())
-    root_logger.addHandler(handler)
+    formatter = JsonFormatter()
+
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+
+    file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    file_handler.setFormatter(formatter)
+
+    root_logger.addHandler(stream_handler)
+    root_logger.addHandler(file_handler)
     root_logger.setLevel(logging.INFO)

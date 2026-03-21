@@ -1,10 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Brain, Search, BarChart3, CheckCircle2 } from "lucide-react";
+import { Brain, Search, BarChart3, CheckCircle2, AlertCircle } from "lucide-react";
+import type { StudentProfile } from "@/lib/admissionEngine";
+import { matchAndAnalyze, matchAndAnalyzeDirect, type StudentMatchRequest, type UniversityPipelineResponse } from "@/lib/api";
 
 interface AnalysisScreenProps {
   studentName: string;
-  onComplete: () => void;
+  profile: StudentProfile;
+  /** When provided (PDF upload flow), sent directly to the pipeline without re-mapping. */
+  parsedRequest?: StudentMatchRequest | null;
+  onComplete: (result: UniversityPipelineResponse | null) => void;
 }
 
 const STEPS = [
@@ -14,32 +19,62 @@ const STEPS = [
   { icon: CheckCircle2, label: "Generating personalized recommendations…", duration: 1200 },
 ];
 
-export default function AnalysisScreen({ studentName, onComplete }: AnalysisScreenProps) {
+const TOTAL_DURATION = STEPS.reduce((a, b) => a + b.duration, 0);
+
+export default function AnalysisScreen({ studentName, profile, parsedRequest, onComplete }: AnalysisScreenProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const apiResultRef = useRef<UniversityPipelineResponse | null>(null);
+  const apiDoneRef = useRef(false);
+  const animDoneRef = useRef(false);
 
+  // Kick off API call immediately
+  useEffect(() => {
+    const call = parsedRequest ? matchAndAnalyzeDirect(parsedRequest) : matchAndAnalyze(profile);
+    call
+      .then((result) => {
+        apiResultRef.current = result;
+        apiDoneRef.current = true;
+        if (animDoneRef.current) onComplete(result);
+      })
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(msg);
+        apiDoneRef.current = true;
+        if (animDoneRef.current) onComplete(null);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Drive the loading animation; wait for API if it hasn't finished yet
   useEffect(() => {
     let totalElapsed = 0;
-    const totalDuration = STEPS.reduce((a, b) => a + b.duration, 0);
-    
+
     const interval = setInterval(() => {
       totalElapsed += 50;
-      setProgress(Math.min((totalElapsed / totalDuration) * 100, 100));
+      setProgress(Math.min((totalElapsed / TOTAL_DURATION) * 100, 100));
 
       let elapsed = 0;
       for (let i = 0; i < STEPS.length; i++) {
         elapsed += STEPS[i].duration;
-        if (totalElapsed < elapsed) {
-          setCurrentStep(i);
-          break;
-        }
+        if (totalElapsed < elapsed) { setCurrentStep(i); break; }
         if (i === STEPS.length - 1) setCurrentStep(STEPS.length);
       }
     }, 50);
 
-    const timeout = setTimeout(onComplete, totalDuration + 500);
+    const timeout = setTimeout(() => {
+      clearInterval(interval);
+      animDoneRef.current = true;
+      if (apiDoneRef.current) {
+        onComplete(apiResultRef.current);
+      }
+      // else: API call will call onComplete when it finishes
+    }, TOTAL_DURATION + 500);
+
     return () => { clearInterval(interval); clearTimeout(timeout); };
-  }, [onComplete]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen bg-hero-gradient flex items-center justify-center px-6">
@@ -63,7 +98,6 @@ export default function AnalysisScreen({ studentName, onComplete }: AnalysisScre
           Our AI is evaluating your profile across multiple dimensions
         </p>
 
-        {/* Progress bar */}
         <div className="w-full h-1.5 bg-primary-foreground/10 rounded-full mb-10 overflow-hidden">
           <motion.div
             className="h-full bg-accent rounded-full"
@@ -90,13 +124,24 @@ export default function AnalysisScreen({ studentName, onComplete }: AnalysisScre
                 <span className={`text-sm ${isDone ? "text-accent" : isActive ? "text-primary-foreground" : "text-primary-foreground/30"}`}>
                   {step.label}
                 </span>
-                {isDone && (
-                  <CheckCircle2 className="w-4 h-4 text-accent ml-auto" />
-                )}
+                {isDone && <CheckCircle2 className="w-4 h-4 text-accent ml-auto" />}
               </motion.div>
             );
           })}
         </div>
+
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-6 flex items-center gap-2 text-xs text-amber-400/80 bg-amber-400/10 rounded-lg px-4 py-3 text-left"
+            >
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>API unavailable — showing local estimates instead.</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

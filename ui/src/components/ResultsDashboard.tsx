@@ -2,12 +2,14 @@ import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { ArrowUpRight, TrendingUp, Lightbulb, GraduationCap, Trophy, Users, Sparkles, RotateCcw } from "lucide-react";
 import type { StudentProfile, SchoolResult, ProfileStrength, ImprovementSuggestion } from "@/lib/admissionEngine";
-import { getTopSchools, calculateProfileStrength, getImprovementSuggestions, calculateAdmissionProbability } from "@/lib/admissionEngine";
+import { getTopSchools, calculateProfileStrength, getImprovementSuggestions } from "@/lib/admissionEngine";
+import { pipelineResponseToSchools, type UniversityPipelineResponse } from "@/lib/api";
 import SchoolCard from "./SchoolCard";
 import WhatIfSimulator from "./WhatIfSimulator";
 
 interface ResultsDashboardProps {
   profile: StudentProfile;
+  apiResult: UniversityPipelineResponse | null;
   onReset: () => void;
 }
 
@@ -38,12 +40,18 @@ function ScoreRing({ value, label, color }: { value: number; label: string; colo
   );
 }
 
-export default function ResultsDashboard({ profile, onReset }: ResultsDashboardProps) {
+export default function ResultsDashboard({ profile, apiResult, onReset }: ResultsDashboardProps) {
   const [simProfile, setSimProfile] = useState(profile);
   const strength = useMemo(() => calculateProfileStrength(simProfile), [simProfile]);
-  const schools = useMemo(() => getTopSchools(simProfile), [simProfile]);
-  const suggestions = useMemo(() => getImprovementSuggestions(simProfile, schools), [simProfile, schools]);
   const isSimulating = simProfile.sat !== profile.sat || simProfile.gpa !== profile.gpa || simProfile.leadershipRoles !== profile.leadershipRoles;
+
+  // Use API results for initial display; fall back to local engine when simulating or no API result
+  const schools = useMemo<SchoolResult[]>(() => {
+    if (!isSimulating && apiResult) return pipelineResponseToSchools(apiResult);
+    return getTopSchools(simProfile);
+  }, [isSimulating, apiResult, simProfile]);
+
+  const suggestions = useMemo(() => getImprovementSuggestions(simProfile, schools), [simProfile, schools]);
 
   const reachCount = schools.filter((s) => s.category === "reach").length;
   const targetCount = schools.filter((s) => s.category === "target").length;

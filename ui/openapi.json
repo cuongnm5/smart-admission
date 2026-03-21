@@ -1,0 +1,1039 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Smart Admission - University Candidate Matching",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/v1/matching/universities": {
+      "post": {
+        "tags": [
+          "matching"
+        ],
+        "summary": "Match Universities",
+        "operationId": "match_universities_v1_matching_universities_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudentMatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/pipeline/match-and-analyze": {
+      "post": {
+        "tags": [
+          "pipeline"
+        ],
+        "summary": "Match And Analyze",
+        "operationId": "match_and_analyze_v1_pipeline_match_and_analyze_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudentMatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UniversityPipelineResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ACTScore": {
+        "properties": {
+          "composite": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 36,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Composite"
+          },
+          "sections": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Sections"
+          }
+        },
+        "type": "object",
+        "title": "ACTScore"
+      },
+      "APIBScore": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "title": "Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subject",
+          "score"
+        ],
+        "title": "APIBScore"
+      },
+      "AcademicProfile": {
+        "properties": {
+          "gpa": {
+            "items": {
+              "$ref": "#/components/schemas/GPARecord"
+            },
+            "type": "array",
+            "title": "Gpa"
+          },
+          "class_rank": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClassRank"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "school_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SchoolProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "transcript": {
+            "items": {
+              "$ref": "#/components/schemas/TranscriptYear"
+            },
+            "type": "array",
+            "title": "Transcript"
+          }
+        },
+        "type": "object",
+        "title": "AcademicProfile"
+      },
+      "AwardRecord": {
+        "properties": {
+          "award_name": {
+            "type": "string",
+            "title": "Award Name"
+          },
+          "organizer": {
+            "type": "string",
+            "title": "Organizer"
+          },
+          "level": {
+            "type": "string",
+            "title": "Level"
+          },
+          "year": {
+            "type": "integer",
+            "minimum": 1900,
+            "title": "Year"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "award_name",
+          "organizer",
+          "level",
+          "year",
+          "description"
+        ],
+        "title": "AwardRecord"
+      },
+      "ClassRank": {
+        "properties": {
+          "value": {
+            "type": "integer",
+            "minimum": 1,
+            "title": "Value"
+          },
+          "total_students": {
+            "type": "integer",
+            "minimum": 1,
+            "title": "Total Students"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "total_students"
+        ],
+        "title": "ClassRank"
+      },
+      "EnglishTest": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "score": {
+            "type": "number",
+            "maximum": 9,
+            "minimum": 0,
+            "title": "Score"
+          },
+          "section_scores": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Section Scores"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "score"
+        ],
+        "title": "EnglishTest"
+      },
+      "Essays": {
+        "properties": {
+          "personal_statement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonalStatement"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "supplemental_essays": {
+            "items": {
+              "$ref": "#/components/schemas/SupplementalEssay"
+            },
+            "type": "array",
+            "title": "Supplemental Essays"
+          }
+        },
+        "type": "object",
+        "title": "Essays"
+      },
+      "ExtracurricularActivity": {
+        "properties": {
+          "activity_name": {
+            "type": "string",
+            "title": "Activity Name"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "organization": {
+            "type": "string",
+            "title": "Organization"
+          },
+          "start_date": {
+            "type": "string",
+            "title": "Start Date"
+          },
+          "end_date": {
+            "type": "string",
+            "title": "End Date"
+          },
+          "hours_per_week": {
+            "type": "number",
+            "minimum": 0,
+            "title": "Hours Per Week"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "activity_name",
+          "role",
+          "organization",
+          "start_date",
+          "end_date",
+          "hours_per_week",
+          "description"
+        ],
+        "title": "ExtracurricularActivity"
+      },
+      "FinancialProfile": {
+        "properties": {
+          "budget_per_year": {
+            "type": "number",
+            "minimum": 0,
+            "title": "Budget Per Year"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "need_scholarship": {
+            "type": "boolean",
+            "title": "Need Scholarship"
+          },
+          "scholarship_expectation_percent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scholarship Expectation Percent"
+          },
+          "family_income_range": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family Income Range"
+          }
+        },
+        "type": "object",
+        "required": [
+          "budget_per_year",
+          "currency",
+          "need_scholarship"
+        ],
+        "title": "FinancialProfile"
+      },
+      "GPARecord": {
+        "properties": {
+          "year": {
+            "type": "string",
+            "title": "Year"
+          },
+          "value": {
+            "type": "number",
+            "minimum": 0,
+            "title": "Value"
+          },
+          "scale": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "title": "Scale"
+          }
+        },
+        "type": "object",
+        "required": [
+          "year",
+          "value",
+          "scale"
+        ],
+        "title": "GPARecord"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LeadershipExperience": {
+        "properties": {
+          "position": {
+            "type": "string",
+            "title": "Position"
+          },
+          "organization": {
+            "type": "string",
+            "title": "Organization"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "duration": {
+            "type": "string",
+            "title": "Duration"
+          }
+        },
+        "type": "object",
+        "required": [
+          "position",
+          "organization",
+          "description",
+          "duration"
+        ],
+        "title": "LeadershipExperience"
+      },
+      "MatchingMeta": {
+        "properties": {
+          "retrieved_count": {
+            "type": "integer",
+            "title": "Retrieved Count"
+          },
+          "hard_filter_pass_count": {
+            "type": "integer",
+            "title": "Hard Filter Pass Count"
+          },
+          "scored_count": {
+            "type": "integer",
+            "title": "Scored Count"
+          },
+          "returned_count": {
+            "type": "integer",
+            "title": "Returned Count"
+          },
+          "rubric_version": {
+            "type": "string",
+            "title": "Rubric Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "retrieved_count",
+          "hard_filter_pass_count",
+          "scored_count",
+          "returned_count",
+          "rubric_version"
+        ],
+        "title": "MatchingMeta"
+      },
+      "MatchingResponse": {
+        "properties": {
+          "top_candidates": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Top Candidates"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/MatchingMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "top_candidates",
+          "meta"
+        ],
+        "title": "MatchingResponse"
+      },
+      "PersonalStatement": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "PersonalStatement"
+      },
+      "PreferenceProfile": {
+        "properties": {
+          "dream_major": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dream Major"
+          },
+          "target_schools": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Target Schools"
+          },
+          "preferred_locations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Preferred Locations"
+          },
+          "ranking_preference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ranking Preference"
+          },
+          "school_type_preference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Type Preference"
+          }
+        },
+        "type": "object",
+        "title": "PreferenceProfile"
+      },
+      "ProjectRecord": {
+        "properties": {
+          "project_name": {
+            "type": "string",
+            "title": "Project Name"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          },
+          "start_date": {
+            "type": "string",
+            "title": "Start Date"
+          },
+          "end_date": {
+            "type": "string",
+            "title": "End Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_name",
+          "role",
+          "description",
+          "start_date",
+          "end_date"
+        ],
+        "title": "ProjectRecord"
+      },
+      "RecommendationLetter": {
+        "properties": {
+          "from": {
+            "type": "string",
+            "title": "From"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "relationship_duration": {
+            "type": "string",
+            "title": "Relationship Duration"
+          },
+          "content_summary": {
+            "type": "string",
+            "title": "Content Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "from",
+          "role",
+          "relationship_duration",
+          "content_summary"
+        ],
+        "title": "RecommendationLetter"
+      },
+      "SATScore": {
+        "properties": {
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1600,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "math": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 800,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Math"
+          },
+          "reading_writing": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 800,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reading Writing"
+          }
+        },
+        "type": "object",
+        "title": "SATScore"
+      },
+      "SchoolProfile": {
+        "properties": {
+          "school_name": {
+            "type": "string",
+            "title": "School Name"
+          },
+          "school_type": {
+            "type": "string",
+            "title": "School Type"
+          },
+          "location": {
+            "type": "string",
+            "title": "Location"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "school_name",
+          "school_type",
+          "location",
+          "description"
+        ],
+        "title": "SchoolProfile"
+      },
+      "StageOneMatchingOutput": {
+        "properties": {
+          "top_20_university_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Top 20 University Ids"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/MatchingMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "top_20_university_ids",
+          "meta"
+        ],
+        "title": "StageOneMatchingOutput"
+      },
+      "StageTwoAnalysisOutput": {
+        "properties": {
+          "analyzed_university_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Analyzed University Ids"
+          },
+          "matched_university_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched University Id"
+          },
+          "ranking_summary": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Ranking Summary"
+          },
+          "detailed_analysis": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Detailed Analysis"
+          }
+        },
+        "type": "object",
+        "required": [
+          "analyzed_university_ids",
+          "ranking_summary",
+          "detailed_analysis"
+        ],
+        "title": "StageTwoAnalysisOutput"
+      },
+      "StudentMatchRequest": {
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Student Id",
+            "default": "unknown"
+          },
+          "academic": {
+            "$ref": "#/components/schemas/AcademicProfile"
+          },
+          "test_scores": {
+            "$ref": "#/components/schemas/TestScores"
+          },
+          "intended_major": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Intended Major"
+          },
+          "extracurriculars": {
+            "items": {
+              "$ref": "#/components/schemas/ExtracurricularActivity"
+            },
+            "type": "array",
+            "title": "Extracurriculars"
+          },
+          "leadership": {
+            "items": {
+              "$ref": "#/components/schemas/LeadershipExperience"
+            },
+            "type": "array",
+            "title": "Leadership"
+          },
+          "awards": {
+            "items": {
+              "$ref": "#/components/schemas/AwardRecord"
+            },
+            "type": "array",
+            "title": "Awards"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectRecord"
+            },
+            "type": "array",
+            "title": "Projects"
+          },
+          "essays": {
+            "$ref": "#/components/schemas/Essays"
+          },
+          "recommendation_letters": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationLetter"
+            },
+            "type": "array",
+            "title": "Recommendation Letters"
+          },
+          "financial": {
+            "$ref": "#/components/schemas/FinancialProfile"
+          },
+          "preferences": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PreferenceProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "academic",
+          "test_scores",
+          "intended_major",
+          "financial"
+        ],
+        "title": "StudentMatchRequest"
+      },
+      "SupplementalEssay": {
+        "properties": {
+          "school": {
+            "type": "string",
+            "title": "School"
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "school",
+          "prompt",
+          "content"
+        ],
+        "title": "SupplementalEssay"
+      },
+      "TestScores": {
+        "properties": {
+          "english_tests": {
+            "items": {
+              "$ref": "#/components/schemas/EnglishTest"
+            },
+            "type": "array",
+            "title": "English Tests"
+          },
+          "sat": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SATScore"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "act": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ACTScore"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ap_ib": {
+            "items": {
+              "$ref": "#/components/schemas/APIBScore"
+            },
+            "type": "array",
+            "title": "Ap Ib"
+          }
+        },
+        "type": "object",
+        "title": "TestScores"
+      },
+      "TranscriptSubject": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "grade": {
+            "type": "number",
+            "minimum": 0,
+            "title": "Grade"
+          },
+          "max_grade": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "title": "Max Grade"
+          },
+          "level": {
+            "type": "string",
+            "title": "Level"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subject",
+          "grade",
+          "max_grade",
+          "level"
+        ],
+        "title": "TranscriptSubject"
+      },
+      "TranscriptYear": {
+        "properties": {
+          "year": {
+            "type": "string",
+            "title": "Year"
+          },
+          "subjects": {
+            "items": {
+              "$ref": "#/components/schemas/TranscriptSubject"
+            },
+            "type": "array",
+            "title": "Subjects"
+          }
+        },
+        "type": "object",
+        "required": [
+          "year"
+        ],
+        "title": "TranscriptYear"
+      },
+      "UniversityPipelineResponse": {
+        "properties": {
+          "stage_1_matching": {
+            "$ref": "#/components/schemas/StageOneMatchingOutput"
+          },
+          "stage_2_analysis": {
+            "$ref": "#/components/schemas/StageTwoAnalysisOutput"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stage_1_matching",
+          "stage_2_analysis"
+        ],
+        "title": "UniversityPipelineResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

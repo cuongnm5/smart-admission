@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"http\\\\|localhost\\\\|api\\\\|fetch\\\\|axios\" /Users/lap15623/Works/SideProjects/smart-admission/ui/src --include=*.tsx --include=*.ts)",
+      "Bash(npm run:*)",
+      "Bash(bun run:*)",
+      "Bash(npx vite:*)",
+      "Bash(echo $PATH)",
+      "Read(//usr/local/**)",
+      "Bash(/Users/lap15623/.bun/bin/bun install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node_modules/.bin/tsc --noEmit 2>&1)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(node_modules/.bin/vite build:*)",
+      "Bash(/Users/lap15623/.bun/bin/bun run:*)",
+      "Bash(node_modules/.bin/tsc --noEmit --skipLibCheck)",
+      "Bash(uv add:*)",
+      "Bash(curl:*)",
+      "Bash(pkill -f \"uvicorn app.main\")",
+      "Bash(pkill -f \"vite\")",
+      "Read(//Users/lap15623/Works/SideProjects/smart-admission/**)",
+      "Bash(uv remove:*)"
+    ]
+  }
+}

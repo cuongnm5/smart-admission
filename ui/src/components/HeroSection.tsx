@@ -19,7 +19,7 @@ export default function HeroSection({ onStart }: HeroSectionProps) {
           <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-accent-foreground" />
           </div>
-          <span className="text-primary-foreground font-semibold text-lg tracking-tight">ETEST</span>
+          <span className="text-primary-foreground font-semibold text-lg tracking-tight">Smart Admission</span>
         </div>
         <button
           onClick={onStart}
