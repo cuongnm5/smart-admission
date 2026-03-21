@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>US Universities Explorer</title>
+
+  <!-- AG Grid Community -->
+  <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/dist/ag-grid-community.min.js"></script>
+  <!-- PapaParse -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+      color: #fff;
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 12px rgba(0,0,0,.3);
+    }
+    header h1 { font-size: 1.35rem; font-weight: 700; letter-spacing: -.3px; }
+    header h1 span { color: #e94560; }
+    .stats-bar {
+      display: flex;
+      gap: 18px;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+    .stat {
+      text-align: center;
+      background: rgba(255,255,255,.08);
+      border-radius: 8px;
+      padding: 6px 14px;
+      min-width: 80px;
+    }
+    .stat .val { font-size: 1.15rem; font-weight: 700; color: #e94560; }
+    .stat .lbl { font-size: .65rem; color: #aaa; text-transform: uppercase; letter-spacing: .5px; }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 12px 16px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+    .toolbar input[type="text"],
+    .toolbar select {
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 7px 11px;
+      font-size: .85rem;
+      outline: none;
+      background: #f9fafb;
+      transition: border .15s;
+    }
+    .toolbar input[type="text"] { width: 230px; }
+    .toolbar select { cursor: pointer; }
+    .toolbar input[type="text"]:focus,
+    .toolbar select:focus { border-color: #0f3460; background: #fff; }
+
+    .range-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: .82rem;
+      color: #555;
+    }
+    .range-group input[type="number"] {
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: .82rem;
+      width: 80px;
+      outline: none;
+      background: #f9fafb;
+    }
+    .range-group input[type="number"]:focus { border-color: #0f3460; background: #fff; }
+
+    .btn {
+      padding: 7px 14px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: .82rem;
+      font-weight: 600;
+      transition: background .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: #0f3460; color: #fff; }
+    .btn-primary:hover { background: #16213e; }
+    .btn-ghost { background: #f1f5f9; color: #555; }
+    .btn-ghost:hover { background: #e2e8f0; }
+    .btn-ranked { background: #e94560; color: #fff; }
+    .btn-ranked:hover { background: #c73652; }
+    .btn-ranked.off { background: #f1f5f9; color: #555; }
+
+    .divider { width: 1px; height: 24px; background: #e2e8f0; margin: 0 4px; }
+
+    /* ── Column toggle panel ── */
+    .col-toggle-wrap {
+      position: relative;
+    }
+    .col-toggle-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.12);
+      padding: 10px;
+      z-index: 100;
+      width: 260px;
+      max-height: 340px;
+      overflow-y: auto;
+    }
+    .col-toggle-dropdown.open { display: block; }
+    .col-toggle-dropdown label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: .8rem;
+      padding: 4px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .col-toggle-dropdown label:hover { background: #f1f5f9; }
+
+    /* ── Grid container ── */
+    #grid-wrapper {
+      flex: 1;
+      padding: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    #result-info {
+      padding: 6px 16px;
+      font-size: .78rem;
+      color: #666;
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+      flex-shrink: 0;
+    }
+    #grid-wrapper .ag-theme-alpine {
+      flex: 1;
+      width: 100%;
+    }
+
+    /* ── Custom header tooltip ── */
+    .col-header-wrap {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .col-info {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.22);
+      color: #fff;
+      font-size: .62rem;
+      font-weight: 700;
+      cursor: help;
+      flex-shrink: 0;
+    }
+    #col-tooltip {
+      position: fixed;
+      background: #1a1a2e;
+      color: #e2e8f0;
+      font-size: .75rem;
+      line-height: 1.55;
+      font-weight: 400;
+      padding: 9px 13px;
+      border-radius: 8px;
+      width: 280px;
+      white-space: normal;
+      box-shadow: 0 6px 20px rgba(0,0,0,.4);
+      border: 1px solid rgba(255,255,255,.08);
+      z-index: 99999;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .12s;
+    }
+    #col-tooltip.visible { opacity: 1; }
+
+    /* ── AG Grid overrides ── */
+    .ag-theme-alpine {
+      --ag-header-background-color: #1a1a2e;
+      --ag-header-foreground-color: #e2e8f0;
+      --ag-header-column-separator-color: rgba(255,255,255,.12);
+      --ag-odd-row-background-color: #fafbfc;
+      --ag-row-hover-color: #eef4ff;
+      --ag-selected-row-background-color: #dbeafe;
+      --ag-font-size: 13px;
+      --ag-cell-horizontal-padding: 10px;
+    }
+    .ag-theme-alpine .ag-header-cell-label { font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .3px; }
+
+    /* cell badges */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: .72rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-public    { background: #dbeafe; color: #1e40af; }
+    .badge-nonprofit { background: #dcfce7; color: #166534; }
+    .badge-profit    { background: #fef3c7; color: #92400e; }
+
+    .rank-badge {
+      display: inline-block;
+      background: #e94560;
+      color: #fff;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: .72rem;
+      font-weight: 700;
+    }
+
+    /* ── Loading overlay ── */
+    #loading {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,20,40,.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      color: #fff;
+      gap: 16px;
+    }
+    .spinner {
+      width: 48px; height: 48px;
+      border: 4px solid rgba(255,255,255,.2);
+      border-top-color: #e94560;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading p { font-size: 1rem; color: #aac; }
+
+    /* ── Detail drawer ── */
+    #drawer {
+      position: fixed;
+      top: 0; right: -460px;
+      width: 460px;
+      height: 100vh;
+      background: #fff;
+      box-shadow: -4px 0 24px rgba(0,0,0,.18);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      transition: right .25s cubic-bezier(.4,0,.2,1);
+      overflow: hidden;
+    }
+    #drawer.open { right: 0; }
+    #drawer-header {
+      background: linear-gradient(135deg, #1a1a2e, #0f3460);
+      color: #fff;
+      padding: 18px 20px;
+      flex-shrink: 0;
+    }
+    #drawer-header h2 { font-size: 1rem; line-height: 1.4; }
+    #drawer-header .sub { font-size: .8rem; color: #aac; margin-top: 2px; }
+    #drawer-close {
+      position: absolute;
+      top: 14px; right: 16px;
+      background: rgba(255,255,255,.15);
+      border: none;
+      color: #fff;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+    }
+    .detail-section { margin-bottom: 18px; }
+    .detail-section h3 {
+      font-size: .7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: #0f3460;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 5px;
+      margin-bottom: 10px;
+    }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .detail-item { }
+    .detail-item .di-label { font-size: .68rem; color: #888; text-transform: uppercase; letter-spacing: .4px; }
+    .detail-item .di-value { font-size: .88rem; font-weight: 600; color: #1a1a2e; margin-top: 1px; }
+    .detail-item .di-value.null { color: #ccc; font-weight: 400; font-style: italic; }
+    .detail-item.full { grid-column: 1 / -1; }
+    .ranked-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ranked-chip {
+      background: #f0f4ff;
+      border: 1px solid #c7d7ff;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: .75rem;
+      color: #1e3a8a;
+    }
+    .ranked-chip span { font-weight: 700; color: #e94560; }
+    .detail-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: .82rem;
+      color: #0f3460;
+      text-decoration: none;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 6px;
+      background: #f0f4ff;
+      border: 1px solid #c7d7ff;
+      margin-right: 6px;
+      margin-top: 4px;
+    }
+    .detail-link:hover { background: #dbeafe; }
+  </style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Loading 6,429 universities…</p>
+</div>
+
+<!-- Header -->
+<header>
+  <div>
+    <h1>🎓 US Universities <span>Explorer</span></h1>
+  </div>
+  <div class="stats-bar">
+    <div class="stat"><div class="val" id="stat-total">—</div><div class="lbl">Total</div></div>
+    <div class="stat"><div class="val" id="stat-showing">—</div><div class="lbl">Showing</div></div>
+    <div class="stat"><div class="val" id="stat-ranked">—</div><div class="lbl">Ranked</div></div>
+    <div class="stat"><div class="val" id="stat-avg-tuition">—</div><div class="lbl">Avg Tuition</div></div>
+  </div>
+</header>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <input type="text" id="search" placeholder="🔍  Search school name…" />
+
+  <select id="filter-state"><option value="">All States</option></select>
+  <select id="filter-ownership"><option value="">All Types</option></select>
+  <select id="filter-discipline"><option value="">All Disciplines</option></select>
+  <select id="filter-wm-category"><option value="">All WM Categories</option></select>
+  <input type="text" id="filter-program" placeholder="🎓 Program (e.g. Engineering)" style="width:190px" />
+
+  <div class="divider"></div>
+
+  <div class="range-group">
+    Tuition $<input type="number" id="tuition-min" placeholder="Min" min="0" step="1000" />
+    –
+    <input type="number" id="tuition-max" placeholder="Max" min="0" step="1000" />
+  </div>
+
+  <div class="range-group">
+    Grad Rate ≥ <input type="number" id="grad-min" placeholder="0" min="0" max="100" step="5" style="width:60px" />%
+  </div>
+
+  <div class="divider"></div>
+
+  <button class="btn btn-ranked off" id="btn-ranked-only" onclick="toggleRankedOnly()">⭐ Ranked Only</button>
+  <button class="btn btn-ghost" onclick="resetFilters()">Reset</button>
+
+  <div class="divider"></div>
+
+  <div class="col-toggle-wrap">
+    <button class="btn btn-ghost" onclick="toggleColPanel()">Columns ▾</button>
+    <div class="col-toggle-dropdown" id="col-panel"></div>
+  </div>
+</div>
+
+<!-- Result info -->
+<div id="grid-wrapper">
+  <div id="result-info">Loading…</div>
+  <div id="myGrid" class="ag-theme-alpine"></div>
+</div>
+
+<!-- Floating column tooltip -->
+<div id="col-tooltip"></div>
+
+<!-- Detail Drawer -->
+<div id="drawer">
+  <div id="drawer-header">
+    <button id="drawer-close" onclick="closeDrawer()">✕</button>
+    <h2 id="drawer-name">—</h2>
+    <div class="sub" id="drawer-sub">—</div>
+  </div>
+  <div id="drawer-body"></div>
+</div>
+
+<script>
+// ─── Data & State ────────────────────────────────────────────────────────────
+let allData = [];
+let gridApi = null;
+let rankedOnly = false;
+
+const DISCIPLINES = [
+  'Accounting','Business Administration','Computer Science','Criminal Justice',
+  'Education','Engineering','Graphic Design','IT','Marketing','MBA',
+  'Nursing','Paralegal','PhD','Psychology'
+];
+
+// ─── Column definitions ──────────────────────────────────────────────────────
+const fmt = (v, prefix='', suffix='', decimals=0) => {
+  if (v == null || v === '' || v === 'NaN' || isNaN(Number(v))) return '—';
+  const n = Number(v);
+  return prefix + n.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + suffix;
+};
+
+const pct = v => fmt(v, '', '%', 1);
+const usd = v => fmt(v, '$', '', 0);
+
+const ownershipBadge = v => {
+  if (!v || v === '—') return '—';
+  if (v.includes('Public'))    return `<span class="badge badge-public">Public</span>`;
+  if (v.includes('Nonprofit')) return `<span class="badge badge-nonprofit">Nonprofit</span>`;
+  return `<span class="badge badge-profit">For-Profit</span>`;
+};
+
+const rankBadge = v => v && !isNaN(v) ? `<span class="rank-badge">#${Number(v)}</span>` : '—';
+
+const COL_GROUPS = {
+  'Identity': [
+    { field:'name', headerName:'School', pinned:'left', width:260, cellClass:'ag-left-aligned-cell',
+      _tip:'Institution name. Click to open the full detail panel.',
+      cellRenderer: p => `<span style="font-weight:600;cursor:pointer;color:#0f3460" onclick="openDrawer(${p.rowIndex})">${p.value||'—'}</span>` },
+    { field:'city', headerName:'City', width:130,
+      _tip:'City where the main campus is located.' },
+    { field:'state', headerName:'State', width:80,
+      _tip:'US state (or territory) abbreviation.' },
+    { field:'ownership', headerName:'Type', width:150,
+      _tip:'Governance model: Public (state-funded), Private Nonprofit (independent, mission-driven), or Private For-Profit (investor-owned).',
+      cellRenderer: p => ownershipBadge(p.value) },
+  ],
+  'Admissions': [
+    { field:'admission_rate', headerName:'Admit Rate', width:120,
+      _tip:'Percentage of applicants offered admission. Lower = more selective. Source: College Scorecard (DoE).',
+      valueFormatter: p => pct(p.value * 100), comparator: (a,b) => (a||0)-(b||0) },
+    { field:'sat_avg', headerName:'SAT Avg', width:110,
+      _tip:'Average SAT composite score (Evidence-Based Reading + Math, out of 1600) for enrolled students. Source: College Scorecard.',
+      valueFormatter: p => fmt(p.value) },
+    { field:'act_midpoint', headerName:'ACT Mid', width:110,
+      _tip:'Midpoint (50th percentile) ACT composite score (out of 36) for enrolled students. Source: College Scorecard.',
+      valueFormatter: p => fmt(p.value) },
+    { field:'enrollment', headerName:'Enrollment', width:120,
+      _tip:'Total number of undergraduate students enrolled. Source: College Scorecard.',
+      valueFormatter: p => fmt(p.value) },
+  ],
+  'Cost': [
+    { field:'tuition_in_state', headerName:'Tuition (In)', width:130,
+      _tip:'Annual tuition & fees for in-state residents. Typically lower at public universities. Source: College Scorecard.',
+      valueFormatter: p => usd(p.value) },
+    { field:'tuition_out_of_state', headerName:'Tuition (Out)', width:130,
+      _tip:'Annual tuition & fees for out-of-state students. Source: College Scorecard.',
+      valueFormatter: p => usd(p.value) },
+    { field:'cost_of_attendance', headerName:'Cost/Yr', width:120,
+      _tip:'Total estimated annual cost: tuition + fees + room & board + books + personal expenses. Source: College Scorecard.',
+      valueFormatter: p => usd(p.value) },
+    { field:'median_debt', headerName:'Median Debt', width:130,
+      _tip:'Median cumulative federal loan debt at graduation for students who completed their degree. Source: College Scorecard.',
+      valueFormatter: p => usd(p.value) },
+  ],
+  'Outcomes': [
+    { field:'graduation_rate_4yr', headerName:'Grad Rate', width:115,
+      _tip:'Percentage of full-time, first-time students who graduated within 150% of normal program time (6 years for a 4-year degree). Green ≥ 70%, Red < 30%. Source: College Scorecard.',
+      valueFormatter: p => pct(p.value * 100),
+      cellStyle: p => {
+        const v = p.value; if (!v) return {};
+        if (v >= 0.7) return { color:'#166534', fontWeight:600 };
+        if (v < 0.3) return { color:'#991b1b', fontWeight:600 };
+        return {};
+      }},
+    { field:'retention_rate', headerName:'Retention', width:115,
+      _tip:'Percentage of first-year students who return for their second year. A proxy for student satisfaction and academic support quality. Source: College Scorecard.',
+      valueFormatter: p => pct(p.value * 100) },
+    { field:'median_earnings_6yr', headerName:'Earnings 6yr', width:130,
+      _tip:'Median annual earnings of students who enrolled (not necessarily graduated) 6 years after first enrolling. Includes students who left without a degree. Source: College Scorecard.',
+      valueFormatter: p => usd(p.value) },
+    { field:'median_earnings_10yr', headerName:'Earnings 10yr', width:135,
+      _tip:'Median annual earnings of students 10 years after first enrolling. Green ≥ $80k, Red ≤ $30k. A stronger signal of long-term career impact. Source: College Scorecard.',
+      cellStyle: p => ({ color: p.value >= 80000 ? '#166534' : p.value <= 30000 ? '#991b1b' : 'inherit', fontWeight: 600 }),
+      valueFormatter: p => usd(p.value) },
+  ],
+  'Programs': [
+    { field:'top_programs', headerName:'Top Programs', width:280, cellClass:'ag-left-aligned-cell',
+      _tip:'The 3 academic program areas with the highest share of enrolled students, with their enrollment percentages. Based on CIP (Classification of Instructional Programs) codes. Source: College Scorecard.',
+      cellRenderer: p => p.value && p.value !== 'nan'
+        ? `<span style="font-size:.75rem;color:#444">${p.value}</span>` : '—' },
+    { field:'programs_offered', headerName:'All Programs', width:320, cellClass:'ag-left-aligned-cell',
+      _tip:'All academic program areas offered, listed alphabetically. A program area appears here if any students are enrolled in it. Use the "Program" filter in the toolbar to search. Source: College Scorecard.',
+      cellRenderer: p => p.value && p.value !== 'nan'
+        ? `<span style="font-size:.72rem;color:#666">${p.value}</span>` : '—' },
+  ],
+  'Rankings': [
+    { field:'wm_rank', headerName:'WM Rank', width:105,
+      _tip:'Washington Monthly overall rank within the school\'s category (National Universities, Liberal Arts, Master\'s, or Bachelor\'s Colleges). Methodology focuses on social mobility, research output, and public service — not prestige. Source: Washington Monthly 2024.',
+      cellRenderer: p => rankBadge(p.value), comparator: (a,b) => (a||9999)-(b||9999) },
+    { field:'wm_category', headerName:'WM Category', width:175, cellClass:'ag-left-aligned-cell',
+      _tip:'The ranking category Washington Monthly placed this school in: National Universities (doctoral-granting), Liberal Arts Colleges, Master\'s Universities, or Bachelor\'s Colleges.',
+      cellRenderer: p => p.value && p.value !== 'nan'
+        ? `<span style="font-size:.75rem;background:#f0f4ff;border:1px solid #c7d7ff;border-radius:4px;padding:2px 7px;color:#1e3a8a">${p.value}</span>` : '—' },
+    { field:'wm_bang_for_buck_rank', headerName:'Bang/Buck', width:110,
+      _tip:'"Best Bang for the Buck" rank — Washington Monthly\'s value ranking within a US region (Northeast, Southeast, South, Midwest, West). Scores schools on graduation rates, Pell grant enrollment, and earnings relative to cost. Source: Washington Monthly 2024.',
+      cellRenderer: p => rankBadge(p.value), comparator: (a,b) => (a||9999)-(b||9999) },
+    { field:'wm_social_mobility_rank', headerName:'Mobility Rank', width:125,
+      _tip:'Washington Monthly sub-rank for Social Mobility: how well the school graduates low-income (Pell Grant) students vs. similarly selective peers. Rank #1 = best in category. Source: Washington Monthly 2024.',
+      valueFormatter: p => fmt(p.value) },
+    { field:'wm_research_rank', headerName:'Research Rank', width:125,
+      _tip:'Washington Monthly sub-rank for Research output: R&D expenditure, number of PhDs awarded, faculty awards. Rank #1 = best in category. Source: Washington Monthly 2024.',
+      valueFormatter: p => fmt(p.value) },
+    { field:'oedb_best_rank', headerName:'OEDB Best', width:110,
+      _tip:'Best (lowest) rank this school achieved across any of the 14 OEDB online program discipline rankings (Accounting, MBA, Nursing, Computer Science, etc.). Source: OEDB.org.',
+      cellRenderer: p => rankBadge(p.value), comparator: (a,b) => (a||9999)-(b||9999) },
+    { field:'oedb_disciplines_ranked', headerName:'OEDB Disciplines', width:220, cellClass:'ag-left-aligned-cell',
+      _tip:'All disciplines in which this school appears in an OEDB.org online program ranking. OEDB ranks schools across 14 fields: Accounting, Business, CS, Criminal Justice, Education, Engineering, Graphic Design, IT, Marketing, MBA, Nursing, Paralegal, PhD, Psychology.',
+      cellRenderer: p => p.value ? `<span style="font-size:.75rem;color:#555">${p.value}</span>` : '—' },
+    { field:'oedb_student_faculty_ratio', headerName:'Stud:Faculty', width:120,
+      _tip:'Student-to-faculty ratio as reported by OEDB (e.g. "14 to 1"). Lower ratios generally indicate smaller class sizes and more individual attention. Source: OEDB.org.' },
+  ],
+};
+
+// ─── Floating column tooltip ─────────────────────────────────────────────────
+const floatTip = document.getElementById('col-tooltip');
+let tipTimer = null;
+
+function showTip(el, text) {
+  clearTimeout(tipTimer);
+  floatTip.textContent = text;
+  const r = el.getBoundingClientRect();
+  // Position below the icon, clamp to viewport right edge
+  let left = r.left + r.width / 2 - 140;
+  if (left + 280 > window.innerWidth - 8) left = window.innerWidth - 288;
+  if (left < 8) left = 8;
+  floatTip.style.left = left + 'px';
+  floatTip.style.top  = (r.bottom + 6) + 'px';
+  floatTip.classList.add('visible');
+}
+function hideTip() {
+  tipTimer = setTimeout(() => floatTip.classList.remove('visible'), 80);
+}
+
+class TooltipHeader {
+  init(params) {
+    this.eGui = document.createElement('div');
+    this.eGui.className = 'col-header-wrap';
+    const label = document.createElement('span');
+    label.textContent = params.displayName;
+    label.style.cursor = 'pointer';
+    label.addEventListener('click', () => params.progressSort());
+    this.eGui.appendChild(label);
+
+    const tip = params.column.getColDef()._tip;
+    if (tip) {
+      const info = document.createElement('span');
+      info.className = 'col-info';
+      info.textContent = 'i';
+      info.addEventListener('mouseenter', () => showTip(info, tip));
+      info.addEventListener('mouseleave', hideTip);
+      this.eGui.appendChild(info);
+    }
+  }
+  getGui() { return this.eGui; }
+  destroy() {}
+}
+
+function buildColDefs() {
+  const defs = [];
+  for (const [group, cols] of Object.entries(COL_GROUPS)) {
+    defs.push({ headerName: group, children: cols.map(c => ({
+      ...c,
+      sortable: true,
+      resizable: true,
+      filter: true,
+      menuTabs: ['filterMenuTab'],
+      headerComponent: c._tip ? TooltipHeader : undefined,
+    }))});
+  }
+  return defs;
+}
+
+// ─── Grid init ───────────────────────────────────────────────────────────────
+function initGrid(data) {
+  const gridOptions = {
+    columnDefs: buildColDefs(),
+    rowData: data,
+    defaultColDef: { sortable: true, resizable: true, filter: true },
+    animateRows: true,
+    rowSelection: 'single',
+    suppressCellFocus: true,
+    rowHeight: 40,
+    headerHeight: 44,
+    groupHeaderHeight: 32,
+    onFilterChanged: updateResultInfo,
+    onSortChanged: () => {},
+    tooltipShowDelay: 300,
+    tooltipHideDelay: 8000,
+    getRowStyle: p => p.data.oedb_disciplines_ranked ? { background: 'rgba(233,69,96,.04)' } : {},
+  };
+
+  const gridEl = document.getElementById('myGrid');
+  gridApi = agGrid.createGrid(gridEl, gridOptions);
+  updateResultInfo();
+}
+
+// ─── Populate filter dropdowns ────────────────────────────────────────────────
+function populateFilters(data) {
+  const states = [...new Set(data.map(d => d.state).filter(Boolean))].sort();
+  const stateEl = document.getElementById('filter-state');
+  states.forEach(s => { const o = new Option(s, s); stateEl.appendChild(o); });
+
+  const ownerships = [...new Set(data.map(d => d.ownership).filter(Boolean))].sort();
+  const owEl = document.getElementById('filter-ownership');
+  ownerships.forEach(v => owEl.appendChild(new Option(v, v)));
+
+  const discEl = document.getElementById('filter-discipline');
+  DISCIPLINES.forEach(d => discEl.appendChild(new Option(d, d)));
+
+  const wmCats = [...new Set(data.map(d => d.wm_category).filter(v => v && v !== 'nan'))].sort();
+  const wmEl = document.getElementById('filter-wm-category');
+  wmCats.forEach(v => wmEl.appendChild(new Option(v, v)));
+}
+
+// ─── Column toggle panel ──────────────────────────────────────────────────────
+function buildColPanel() {
+  const panel = document.getElementById('col-panel');
+  const allCols = Object.values(COL_GROUPS).flat();
+  allCols.forEach(col => {
+    const label = document.createElement('label');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = true;
+    cb.dataset.field = col.field;
+    cb.addEventListener('change', () => {
+      gridApi.setColumnsVisible([col.field], cb.checked);
+    });
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(' ' + col.headerName));
+    panel.appendChild(label);
+  });
+}
+
+function toggleColPanel() {
+  document.getElementById('col-panel').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.col-toggle-wrap')) {
+    document.getElementById('col-panel').classList.remove('open');
+  }
+});
+
+// ─── Search helpers ───────────────────────────────────────────────────────────
+const STOP_WORDS = new Set(['of','the','and','for','at','in','a','an','&']);
+
+function nameAcronym(name) {
+  return (name || '').split(/\s+/)
+    .filter(w => !STOP_WORDS.has(w.toLowerCase()) && /^[a-zA-Z]/.test(w))
+    .map(w => w[0].toLowerCase())
+    .join('');
+}
+
+// Returns 0=exact, 1=starts-with, 2=contains, 3=acronym, 4=no match
+function searchScore(name, q) {
+  const n = (name || '').toLowerCase();
+  if (n === q)            return 0;
+  if (n.startsWith(q))   return 1;
+  if (n.includes(q))     return 2;
+  if (nameAcronym(name) === q) return 3;
+  return 4;
+}
+
+// ─── Filtering ────────────────────────────────────────────────────────────────
+function applyFilters() {
+  const search   = document.getElementById('search').value.toLowerCase().trim();
+  const state    = document.getElementById('filter-state').value;
+  const own      = document.getElementById('filter-ownership').value;
+  const disc     = document.getElementById('filter-discipline').value;
+  const wmCat    = document.getElementById('filter-wm-category').value;
+  const progSearch = document.getElementById('filter-program').value.toLowerCase();
+  const tMin     = parseFloat(document.getElementById('tuition-min').value) || 0;
+  const tMax     = parseFloat(document.getElementById('tuition-max').value) || Infinity;
+  const gMin     = (parseFloat(document.getElementById('grad-min').value) || 0) / 100;
+
+  const filtered = allData.filter(d => {
+    if (search && searchScore(d.name, search) === 4) return false;
+    if (state && d.state !== state) return false;
+    if (own && d.ownership !== own) return false;
+    if (disc) {
+      const key = `oedb_rank_${disc.toLowerCase().replace(/ /g,'_')}`;
+      if (!d[key] || isNaN(d[key])) return false;
+    }
+    if (wmCat && d.wm_category !== wmCat) return false;
+    if (progSearch) {
+      const progs = (d.programs_offered||'').toLowerCase();
+      if (!progs.includes(progSearch)) return false;
+    }
+    if (rankedOnly && !d.oedb_disciplines_ranked && !d.wm_rank) return false;
+    const tuition = parseFloat(d.tuition_in_state) || 0;
+    if (tMin > 0 && tuition < tMin) return false;
+    if (tMax < Infinity && tuition > tMax) return false;
+    if (gMin > 0 && (parseFloat(d.graduation_rate_4yr) || 0) < gMin) return false;
+    return true;
+  });
+
+  // Sort by relevance when a search term is active
+  if (search) {
+    filtered.sort((a, b) => searchScore(a.name, search) - searchScore(b.name, search));
+  }
+
+  gridApi.setGridOption('rowData', filtered);
+  updateResultInfo(filtered.length);
+}
+
+function resetFilters() {
+  document.getElementById('search').value = '';
+  document.getElementById('filter-state').value = '';
+  document.getElementById('filter-ownership').value = '';
+  document.getElementById('filter-discipline').value = '';
+  document.getElementById('filter-wm-category').value = '';
+  document.getElementById('filter-program').value = '';
+  document.getElementById('tuition-min').value = '';
+  document.getElementById('tuition-max').value = '';
+  document.getElementById('grad-min').value = '';
+  rankedOnly = false;
+  document.getElementById('btn-ranked-only').classList.add('off');
+  gridApi.setGridOption('rowData', allData);
+  updateResultInfo(allData.length);
+}
+
+function toggleRankedOnly() {
+  rankedOnly = !rankedOnly;
+  const btn = document.getElementById('btn-ranked-only');
+  btn.classList.toggle('off', !rankedOnly);
+  applyFilters();
+}
+
+['search','filter-state','filter-ownership','filter-discipline','filter-wm-category',
+ 'filter-program','tuition-min','tuition-max','grad-min'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', applyFilters);
+});
+
+// ─── Stats ────────────────────────────────────────────────────────────────────
+function updateStats(data) {
+  document.getElementById('stat-total').textContent = data.length.toLocaleString();
+  const ranked = data.filter(d => d.wm_rank || d.oedb_disciplines_ranked).length;
+  document.getElementById('stat-ranked').textContent = ranked.toLocaleString();
+  const tuitions = data.map(d => parseFloat(d.tuition_in_state)).filter(v => v > 0);
+  const avg = tuitions.reduce((a,b) => a+b, 0) / (tuitions.length || 1);
+  document.getElementById('stat-avg-tuition').textContent = '$' + Math.round(avg/1000) + 'k';
+}
+
+function updateResultInfo(count) {
+  let n = count;
+  if (typeof count !== 'number') {
+    // get from grid
+    let c = 0;
+    gridApi?.forEachNodeAfterFilter(() => c++);
+    n = c;
+  }
+  document.getElementById('stat-showing').textContent = n.toLocaleString();
+  document.getElementById('result-info').textContent =
+    `Showing ${n.toLocaleString()} of ${allData.length.toLocaleString()} universities`;
+}
+
+// ─── Detail Drawer ────────────────────────────────────────────────────────────
+let drawerData = [];
+
+function openDrawer(rowIndex) {
+  // get visible rows
+  const rows = [];
+  gridApi.forEachNodeAfterFilter(n => rows.push(n.data));
+  const d = rows[rowIndex] || allData[rowIndex];
+  if (!d) return;
+
+  document.getElementById('drawer-name').textContent = d.name || '—';
+  document.getElementById('drawer-sub').textContent = [d.city, d.state].filter(Boolean).join(', ') + (d.ownership ? ' · ' + d.ownership : '');
+  document.getElementById('drawer').classList.add('open');
+
+  const val = (v, prefix='', suffix='') => {
+    if (v == null || v === '' || String(v) === 'nan' || String(v) === 'NaN') return `<span class="null">N/A</span>`;
+    return prefix + v + suffix;
+  };
+  const money = v => {
+    const n = parseFloat(v);
+    if (isNaN(n)) return `<span class="null">N/A</span>`;
+    return '$' + n.toLocaleString('en-US', {maximumFractionDigits:0});
+  };
+  const percent = v => {
+    const n = parseFloat(v);
+    if (isNaN(n)) return `<span class="null">N/A</span>`;
+    return (n * 100).toFixed(1) + '%';
+  };
+
+  // Build ranked chips
+  let chipsHtml = '';
+  DISCIPLINES.forEach(disc => {
+    const key = `oedb_rank_${disc.toLowerCase().replace(/ /g,'_')}`;
+    const r = d[key];
+    if (r && !isNaN(r)) {
+      chipsHtml += `<div class="ranked-chip">${disc} <span>#${Number(r)}</span></div>`;
+    }
+  });
+
+  // Links
+  const website = d.website && d.website !== 'nan' ? `<a class="detail-link" href="${d.website}" target="_blank">🌐 Website</a>` : '';
+  const oedbUrl = d.oedb_url && d.oedb_url !== 'nan' ? `<a class="detail-link" href="${d.oedb_url}" target="_blank">📋 OEDB Profile</a>` : '';
+
+  document.getElementById('drawer-body').innerHTML = `
+    <div class="detail-section">
+      <h3>General</h3>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="di-label">Type</div><div class="di-value">${val(d.ownership)}</div></div>
+        <div class="detail-item"><div class="di-label">Carnegie</div><div class="di-value">${val(d.carnegie_type)}</div></div>
+        <div class="detail-item"><div class="di-label">Locale</div><div class="di-value">${val(d.locale)}</div></div>
+        <div class="detail-item"><div class="di-label">Enrollment</div><div class="di-value">${val(parseFloat(d.enrollment) ? parseFloat(d.enrollment).toLocaleString() : null)}</div></div>
+        <div class="detail-item full"><div class="di-label">Degree Levels</div><div class="di-value">${val(d.oedb_degree_levels)}</div></div>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h3>Admissions</h3>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="di-label">Admission Rate</div><div class="di-value">${percent(d.admission_rate)}</div></div>
+        <div class="detail-item"><div class="di-label">SAT Average</div><div class="di-value">${val(d.sat_avg)}</div></div>
+        <div class="detail-item"><div class="di-label">ACT Midpoint</div><div class="di-value">${val(d.act_midpoint)}</div></div>
+        <div class="detail-item"><div class="di-label">Retention Rate</div><div class="di-value">${percent(d.retention_rate)}</div></div>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h3>Cost</h3>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="di-label">Tuition (In-State)</div><div class="di-value">${money(d.tuition_in_state)}</div></div>
+        <div class="detail-item"><div class="di-label">Tuition (Out-of-State)</div><div class="di-value">${money(d.tuition_out_of_state)}</div></div>
+        <div class="detail-item"><div class="di-label">Cost of Attendance</div><div class="di-value">${money(d.cost_of_attendance)}</div></div>
+        <div class="detail-item"><div class="di-label">Avg Net Price (Public)</div><div class="di-value">${money(d.avg_net_price_public)}</div></div>
+        <div class="detail-item"><div class="di-label">Avg Net Price (Private)</div><div class="di-value">${money(d.avg_net_price_private)}</div></div>
+        <div class="detail-item"><div class="di-label">Median Debt</div><div class="di-value">${money(d.median_debt)}</div></div>
+        <div class="detail-item"><div class="di-label">OEDB Tuition</div><div class="di-value">${val(d.oedb_tuition)}</div></div>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h3>Outcomes</h3>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="di-label">Graduation Rate (4yr)</div><div class="di-value">${percent(d.graduation_rate_4yr)}</div></div>
+        <div class="detail-item"><div class="di-label">Earnings (6yr)</div><div class="di-value">${money(d.median_earnings_6yr)}</div></div>
+        <div class="detail-item"><div class="di-label">Earnings (10yr)</div><div class="di-value">${money(d.median_earnings_10yr)}</div></div>
+        <div class="detail-item"><div class="di-label">Student:Faculty</div><div class="di-value">${val(d.oedb_student_faculty_ratio)}</div></div>
+      </div>
+    </div>
+
+    ${(d.programs_offered && d.programs_offered !== 'nan') ? `
+    <div class="detail-section">
+      <h3>Academic Programs</h3>
+      ${d.top_programs && d.top_programs !== 'nan' ? `<p style="font-size:.8rem;font-weight:600;color:#0f3460;margin-bottom:8px">Top: ${d.top_programs}</p>` : ''}
+      <p style="font-size:.76rem;line-height:1.7;color:#555">${d.programs_offered}</p>
+    </div>` : ''}
+
+    ${(d.wm_rank && d.wm_rank !== 'nan') ? `
+    <div class="detail-section">
+      <h3>Washington Monthly Rankings</h3>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="di-label">Overall Rank</div><div class="di-value">#${Number(d.wm_rank)} · ${val(d.wm_category)}</div></div>
+        <div class="detail-item"><div class="di-label">Social Mobility</div><div class="di-value">${val(d.wm_social_mobility_rank) !== '<span class="null">N/A</span>' ? '#'+Number(d.wm_social_mobility_rank) : '<span class="null">N/A</span>'}</div></div>
+        <div class="detail-item"><div class="di-label">Research</div><div class="di-value">${d.wm_research_rank && d.wm_research_rank !== 'nan' ? '#'+Number(d.wm_research_rank) : '<span class="null">N/A</span>'}</div></div>
+        <div class="detail-item"><div class="di-label">Service</div><div class="di-value">${d.wm_service_rank && d.wm_service_rank !== 'nan' ? '#'+Number(d.wm_service_rank) : '<span class="null">N/A</span>'}</div></div>
+        ${d.wm_bang_for_buck_rank && d.wm_bang_for_buck_rank !== 'nan' ? `<div class="detail-item"><div class="di-label">Bang for Buck</div><div class="di-value">#${Number(d.wm_bang_for_buck_rank)} · ${val(d.wm_bang_region)}</div></div>` : ''}
+      </div>
+    </div>` : ''}
+
+    ${chipsHtml ? `
+    <div class="detail-section">
+      <h3>OEDB Program Rankings</h3>
+      <div class="ranked-chips">${chipsHtml}</div>
+    </div>` : ''}
+
+    ${d.oedb_description && d.oedb_description !== 'nan' ? `
+    <div class="detail-section">
+      <h3>Description</h3>
+      <p style="font-size:.82rem;line-height:1.6;color:#444">${d.oedb_description}</p>
+    </div>` : ''}
+
+    <div class="detail-section">
+      <h3>Links</h3>
+      ${website}${oedbUrl}
+    </div>
+  `;
+}
+
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+}
+
+// ─── Load CSV ─────────────────────────────────────────────────────────────────
+fetch('output/universities_master.csv')
+  .then(r => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.text();
+  })
+  .then(csv => {
+    const result = Papa.parse(csv, { header: true, skipEmptyLines: true, dynamicTyping: false });
+    allData = result.data;
+
+    populateFilters(allData);
+    initGrid(allData);
+    buildColPanel();
+    updateStats(allData);
+    updateResultInfo(allData.length);
+
+    document.getElementById('loading').style.display = 'none';
+  })
+  .catch(err => {
+    document.getElementById('loading').innerHTML = `
+      <div style="text-align:center;padding:24px">
+        <div style="font-size:2rem;margin-bottom:12px">⚠️</div>
+        <p style="color:#e94560;font-size:1rem;font-weight:600">Could not load CSV</p>
+        <p style="color:#aac;font-size:.85rem;margin-top:8px">${err.message}</p>
+        <p style="color:#aac;font-size:.82rem;margin-top:16px">Run: <code style="background:rgba(255,255,255,.1);padding:3px 8px;border-radius:4px">python serve.py</code></p>
+      </div>`;
+  });
+</script>
+</body>
+</html>
