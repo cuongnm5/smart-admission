@@ -1,0 +1,10 @@
+{
+  "rubric_version": "v1",
+  "weights": {
+    "academic_fit": 0.35,
+    "affordability_fit": 0.3,
+    "profile_alignment": 0.2,
+    "competitiveness_fit": 0.15
+  },
+  "cs_very_high_competitiveness_penalty_multiplier": 1.25
+}
