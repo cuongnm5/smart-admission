@@ -1,8 +1,10 @@
+import { useCallback, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Brain, Sparkles, Target } from "lucide-react";
+import { Brain, Sparkles, Target, Upload, FileText } from "lucide-react";
 
 interface HeroSectionProps {
-  onStart: () => void;
+  onFileDropped: (file: File) => void;
+  onEnterManually: () => void;
 }
 
 const features = [
@@ -11,7 +13,43 @@ const features = [
   { icon: Sparkles, label: "What-if Simulator", desc: "See how improvements change your odds" },
 ];
 
-export default function HeroSection({ onStart }: HeroSectionProps) {
+export default function HeroSection({ onFileDropped, onEnterManually }: HeroSectionProps) {
+  const [dragging, setDragging] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const processFile = useCallback(
+    (file: File) => {
+      if (!file.name.toLowerCase().endsWith(".pdf")) return;
+      onFileDropped(file);
+    },
+    [onFileDropped]
+  );
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback(() => setDragging(false), []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragging(false);
+      const file = e.dataTransfer.files[0];
+      if (file) processFile(file);
+    },
+    [processFile]
+  );
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) processFile(file);
+    },
+    [processFile]
+  );
+
   return (
     <div className="min-h-screen bg-hero-gradient flex flex-col">
       <nav className="flex items-center justify-between px-6 py-5 md:px-12">
@@ -22,10 +60,10 @@ export default function HeroSection({ onStart }: HeroSectionProps) {
           <span className="text-primary-foreground font-semibold text-lg tracking-tight">Smart Admission</span>
         </div>
         <button
-          onClick={onStart}
+          onClick={onEnterManually}
           className="text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors"
         >
-          Get Started →
+          Enter manually →
         </button>
       </nav>
 
@@ -57,22 +95,60 @@ export default function HeroSection({ onStart }: HeroSectionProps) {
           transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           className="text-primary-foreground/60 text-lg md:text-xl max-w-2xl mb-10 leading-relaxed"
         >
-          Our AI analyzes your profile against 500+ universities to predict admission probability, 
+          Our AI analyzes your profile against 500+ universities to predict admission probability,
           explain every recommendation, and build your optimal application strategy.
         </motion.p>
 
-        <motion.button
+        {/* CV Drop Zone */}
+        <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.97 }}
-          onClick={onStart}
-          className="inline-flex items-center gap-2 rounded-xl bg-accent px-8 py-4 text-accent-foreground font-semibold text-base shadow-lg shadow-accent/20 transition-shadow hover:shadow-xl hover:shadow-accent/30"
+          className="w-full max-w-md"
         >
-          Analyze My Profile
-          <ArrowRight className="w-4 h-4" />
-        </motion.button>
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => inputRef.current?.click()}
+            className={`cursor-pointer rounded-2xl border-2 border-dashed px-8 py-10 text-center transition-colors ${
+              dragging
+                ? "border-accent bg-accent/10"
+                : "border-primary-foreground/20 bg-primary-foreground/5 hover:border-accent/50 hover:bg-accent/5"
+            }`}
+          >
+            <div className="flex flex-col items-center gap-3">
+              {dragging ? (
+                <FileText className="w-8 h-8 text-accent" />
+              ) : (
+                <Upload className="w-8 h-8 text-primary-foreground/40" />
+              )}
+              <div>
+                <p className="text-primary-foreground font-medium text-sm">
+                  {dragging ? "Drop your CV here" : "Drop your CV / resume"}
+                </p>
+                <p className="text-primary-foreground/40 text-xs mt-1">PDF · click to browse</p>
+              </div>
+            </div>
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".pdf"
+              className="hidden"
+              onChange={handleChange}
+            />
+          </div>
+
+          <p className="mt-4 text-primary-foreground/40 text-sm">
+            or{" "}
+            <button
+              onClick={(e) => { e.stopPropagation(); onEnterManually(); }}
+              className="text-accent hover:text-accent/80 transition-colors underline underline-offset-2"
+            >
+              enter your profile manually
+            </button>
+          </p>
+        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 32 }}

@@ -1,14 +1,12 @@
 import { useState, useCallback } from "react";
 import HeroSection from "@/components/HeroSection";
-import PDFUpload from "@/components/PDFUpload";
 import ManualProfileForm from "@/components/ManualProfileForm";
 import AnalysisScreen from "@/components/AnalysisScreen";
 import ResultsDashboard from "@/components/ResultsDashboard";
 import type { StudentProfile } from "@/lib/admissionEngine";
 import type { StudentMatchRequest, UniversityPipelineResponse } from "@/lib/api";
-import { studentProfileFromRequest } from "@/lib/api";
 
-type AppState = "landing" | "upload" | "manual" | "analyzing" | "results";
+type AppState = "landing" | "manual" | "analyzing" | "results";
 
 export default function Index() {
   const [state, setState] = useState<AppState>("landing");
@@ -16,26 +14,39 @@ export default function Index() {
   const [parsedRequest, setParsedRequest] = useState<StudentMatchRequest | null>(null);
   const [missingFields, setMissingFields] = useState<string[]>([]);
   const [apiResult, setApiResult] = useState<UniversityPipelineResponse | null>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [extractionComplete, setExtractionComplete] = useState(false);
 
-  // PDF uploaded — go to manual form to confirm / fill missing fields
-  const handleUploadComplete = useCallback((request: StudentMatchRequest, missing: string[]) => {
-    setParsedRequest(request);
-    setMissingFields(missing);
-    setState("manual");
-  }, []);
-
-  // Manual form submitted with all required fields filled
-  const handleManualComplete = useCallback((p: StudentProfile, req: StudentMatchRequest) => {
-    setProfile(p);
-    setParsedRequest(req);
+  // User dropped a CV → go straight to analyzing (extraction step)
+  const handleFileDropped = useCallback((file: File) => {
+    setPdfFile(file);
+    setExtractionComplete(false);
     setState("analyzing");
   }, []);
 
-  // Skip PDF — go straight to blank manual form
-  const handleSkipUpload = useCallback(() => {
+  // User clicked "Enter manually"
+  const handleEnterManually = useCallback(() => {
+    setPdfFile(null);
     setParsedRequest(null);
     setMissingFields([]);
     setState("manual");
+  }, []);
+
+  // AnalysisScreen found missing fields during extraction → show manual form
+  const handleNeedManualInput = useCallback((partial: StudentMatchRequest, missing: string[]) => {
+    setParsedRequest(partial);
+    setMissingFields(missing);
+    setPdfFile(null);
+    setState("manual");
+  }, []);
+
+  // Manual form submitted → go to analyzing with extraction step already done
+  const handleManualComplete = useCallback((p: StudentProfile, req: StudentMatchRequest) => {
+    setProfile(p);
+    setParsedRequest(req);
+    setPdfFile(null);
+    setExtractionComplete(true);
+    setState("analyzing");
   }, []);
 
   const handleAnalysisComplete = useCallback((result: UniversityPipelineResponse | null) => {
@@ -48,18 +59,17 @@ export default function Index() {
     setParsedRequest(null);
     setMissingFields([]);
     setApiResult(null);
+    setPdfFile(null);
+    setExtractionComplete(false);
     setState("landing");
   }, []);
 
   switch (state) {
     case "landing":
-      return <HeroSection onStart={() => setState("upload")} />;
-
-    case "upload":
       return (
-        <PDFUpload
-          onComplete={handleUploadComplete}
-          onSkip={handleSkipUpload}
+        <HeroSection
+          onFileDropped={handleFileDropped}
+          onEnterManually={handleEnterManually}
         />
       );
 
@@ -74,14 +84,18 @@ export default function Index() {
       );
 
     case "analyzing":
-      return profile ? (
+      return (
         <AnalysisScreen
-          studentName={profile.name}
+          key={extractionComplete ? "post-manual" : "from-pdf"}
+          studentName={profile?.name}
           profile={profile}
           parsedRequest={parsedRequest}
+          pdfFile={pdfFile}
+          extractionComplete={extractionComplete}
+          onNeedManualInput={handleNeedManualInput}
           onComplete={handleAnalysisComplete}
         />
-      ) : null;
+      );
 
     case "results":
       return profile ? (

@@ -1,37 +1,94 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Brain, Search, BarChart3, CheckCircle2, AlertCircle } from "lucide-react";
+import { Brain, Search, BarChart3, CheckCircle2, AlertCircle, FileText, Loader2 } from "lucide-react";
 import type { StudentProfile } from "@/lib/admissionEngine";
-import { matchAndAnalyze, matchAndAnalyzeDirect, type StudentMatchRequest, type UniversityPipelineResponse } from "@/lib/api";
+import {
+  parseProfileFromPDF,
+  matchAndAnalyze,
+  matchAndAnalyzeDirect,
+  type StudentMatchRequest,
+  type UniversityPipelineResponse,
+} from "@/lib/api";
 
 interface AnalysisScreenProps {
-  studentName: string;
-  profile: StudentProfile;
-  /** When provided (PDF upload flow), sent directly to the pipeline without re-mapping. */
+  studentName?: string;
+  profile?: StudentProfile | null;
   parsedRequest?: StudentMatchRequest | null;
+  /** If provided, step 1 runs parseProfileFromPDF on this file */
+  pdfFile?: File | null;
+  /** If true, step 1 is shown as already done (came from manual form) */
+  extractionComplete?: boolean;
+  onNeedManualInput?: (partial: StudentMatchRequest, missing: string[]) => void;
   onComplete: (result: UniversityPipelineResponse | null) => void;
 }
 
-const STEPS = [
+const DEFAULT_MISSING = ["intended_major", "academic.gpa", "financial.budget_per_year", "test_scores"];
+
+const ANALYSIS_STEPS = [
   { icon: Brain, label: "Analyzing your academic strength…", duration: 1800 },
-  { icon: Search, label: "Evaluating extracurricular impact…", duration: 1500 },
-  { icon: BarChart3, label: "Matching with 500+ universities…", duration: 2000 },
+  { icon: Search, label: "Matching with 500+ universities…", duration: 2000 },
+  { icon: BarChart3, label: "Scoring & ranking results…", duration: 1500 },
   { icon: CheckCircle2, label: "Generating personalized recommendations…", duration: 1200 },
 ];
+const TOTAL_ANALYSIS_DURATION = ANALYSIS_STEPS.reduce((a, b) => a + b.duration, 0);
 
-const TOTAL_DURATION = STEPS.reduce((a, b) => a + b.duration, 0);
-
-export default function AnalysisScreen({ studentName, profile, parsedRequest, onComplete }: AnalysisScreenProps) {
-  const [currentStep, setCurrentStep] = useState(0);
+export default function AnalysisScreen({
+  studentName,
+  profile,
+  parsedRequest,
+  pdfFile,
+  extractionComplete,
+  onNeedManualInput,
+  onComplete,
+}: AnalysisScreenProps) {
+  // phase: "extracting" = waiting for PDF parse; "analyzing" = running analysis steps
+  const [phase, setPhase] = useState<"extracting" | "analyzing">(
+    pdfFile && !extractionComplete ? "extracting" : "analyzing"
+  );
+  const [extractionDone, setExtractionDone] = useState(!pdfFile || !!extractionComplete);
+  const [analysisStep, setAnalysisStep] = useState(0); // which ANALYSIS_STEPS step is active
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string>(studentName || "");
+
   const apiResultRef = useRef<UniversityPipelineResponse | null>(null);
   const apiDoneRef = useRef(false);
   const animDoneRef = useRef(false);
+  const extractedRequestRef = useRef<StudentMatchRequest | null>(null);
 
-  // Kick off API call immediately
+  // ── Phase 1: PDF extraction ──────────────────────────────────────────────
   useEffect(() => {
-    const call = parsedRequest ? matchAndAnalyzeDirect(parsedRequest) : matchAndAnalyze(profile);
+    if (phase !== "extracting" || !pdfFile) return;
+
+    parseProfileFromPDF(pdfFile)
+      .then((res) => {
+        if (res.error || !res.data || (res.missing_fields && res.missing_fields.length > 0)) {
+          // Need manual input
+          onNeedManualInput?.(
+            res.data ?? ({} as StudentMatchRequest),
+            res.missing_fields?.length ? res.missing_fields : DEFAULT_MISSING
+          );
+          return;
+        }
+        // Success — remember extracted data, advance to analysis
+        extractedRequestRef.current = res.data;
+        const name = res.data.student_info?.name ?? "";
+        if (name) setDisplayName(name);
+        setExtractionDone(true);
+        setPhase("analyzing");
+      })
+      .catch(() => {
+        onNeedManualInput?.({} as StudentMatchRequest, DEFAULT_MISSING);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Phase 2: Analysis API call ───────────────────────────────────────────
+  useEffect(() => {
+    if (phase !== "analyzing") return;
+
+    const req = extractedRequestRef.current ?? parsedRequest;
+    const call = req ? matchAndAnalyzeDirect(req) : matchAndAnalyze(profile!);
     call
       .then((result) => {
         apiResultRef.current = result;
@@ -45,36 +102,35 @@ export default function AnalysisScreen({ studentName, profile, parsedRequest, on
         if (animDoneRef.current) onComplete(null);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [phase]);
 
-  // Drive the loading animation; wait for API if it hasn't finished yet
+  // ── Phase 2: Analysis animation ──────────────────────────────────────────
   useEffect(() => {
-    let totalElapsed = 0;
+    if (phase !== "analyzing") return;
 
+    let totalElapsed = 0;
     const interval = setInterval(() => {
       totalElapsed += 50;
-      setProgress(Math.min((totalElapsed / TOTAL_DURATION) * 100, 100));
-
+      setProgress(Math.min((totalElapsed / TOTAL_ANALYSIS_DURATION) * 100, 100));
       let elapsed = 0;
-      for (let i = 0; i < STEPS.length; i++) {
-        elapsed += STEPS[i].duration;
-        if (totalElapsed < elapsed) { setCurrentStep(i); break; }
-        if (i === STEPS.length - 1) setCurrentStep(STEPS.length);
+      for (let i = 0; i < ANALYSIS_STEPS.length; i++) {
+        elapsed += ANALYSIS_STEPS[i].duration;
+        if (totalElapsed < elapsed) { setAnalysisStep(i); break; }
+        if (i === ANALYSIS_STEPS.length - 1) setAnalysisStep(ANALYSIS_STEPS.length);
       }
     }, 50);
 
     const timeout = setTimeout(() => {
       clearInterval(interval);
       animDoneRef.current = true;
-      if (apiDoneRef.current) {
-        onComplete(apiResultRef.current);
-      }
-      // else: API call will call onComplete when it finishes
-    }, TOTAL_DURATION + 500);
+      if (apiDoneRef.current) onComplete(apiResultRef.current);
+    }, TOTAL_ANALYSIS_DURATION + 500);
 
     return () => { clearInterval(interval); clearTimeout(timeout); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [phase]);
+
+  const name = displayName || studentName || "";
 
   return (
     <div className="min-h-screen bg-hero-gradient flex items-center justify-center px-6">
@@ -92,35 +148,78 @@ export default function AnalysisScreen({ studentName, profile, parsedRequest, on
           animate={{ opacity: 1 }}
           className="text-2xl font-bold text-primary-foreground mb-2"
         >
-          Analyzing {studentName}'s Profile
+          {name ? `Analyzing ${name}'s Profile` : "Analyzing Your Profile"}
         </motion.h2>
         <p className="text-primary-foreground/50 text-sm mb-10">
           Our AI is evaluating your profile across multiple dimensions
         </p>
 
+        {/* Progress bar — only visible in analysis phase */}
         <div className="w-full h-1.5 bg-primary-foreground/10 rounded-full mb-10 overflow-hidden">
-          <motion.div
-            className="h-full bg-accent rounded-full"
-            style={{ width: `${progress}%` }}
-            transition={{ duration: 0.1 }}
-          />
+          {phase === "analyzing" ? (
+            <motion.div
+              className="h-full bg-accent rounded-full"
+              style={{ width: `${progress}%` }}
+              transition={{ duration: 0.1 }}
+            />
+          ) : (
+            <motion.div
+              className="h-full bg-accent/60 rounded-full"
+              animate={{ x: ["-100%", "100%"] }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+              style={{ width: "40%" }}
+            />
+          )}
         </div>
 
         <div className="space-y-4 text-left">
-          {STEPS.map((step, i) => {
-            const isActive = i === currentStep;
-            const isDone = i < currentStep;
+          {/* Step 0 — Extraction */}
+          <motion.div
+            initial={{ opacity: 0, x: -16 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-colors ${
+              phase === "extracting"
+                ? "bg-accent/10 border border-accent/20"
+                : extractionDone
+                ? "bg-primary-foreground/5"
+                : ""
+            }`}
+          >
+            {phase === "extracting" ? (
+              <Loader2 className="w-4 h-4 flex-shrink-0 text-accent animate-spin" />
+            ) : (
+              <FileText className={`w-4 h-4 flex-shrink-0 ${extractionDone ? "text-accent" : "text-primary-foreground/30"}`} />
+            )}
+            <span className={`text-sm ${phase === "extracting" ? "text-primary-foreground" : extractionDone ? "text-accent" : "text-primary-foreground/30"}`}>
+              {pdfFile && !extractionComplete ? "Extracting your profile from CV…" : "Profile ready"}
+            </span>
+            {extractionDone && <CheckCircle2 className="w-4 h-4 text-accent ml-auto" />}
+          </motion.div>
+
+          {/* Steps 1-4 — Analysis */}
+          {ANALYSIS_STEPS.map((step, i) => {
+            const isActive = phase === "analyzing" && i === analysisStep;
+            const isDone = phase === "analyzing" ? i < analysisStep : false;
+            const isPending = phase === "extracting";
             return (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, x: -16 }}
-                animate={{ opacity: i <= currentStep ? 1 : 0.3, x: 0 }}
-                transition={{ duration: 0.5, delay: i * 0.15 }}
+                animate={{
+                  opacity: isPending ? 0.2 : i <= analysisStep || isDone ? 1 : 0.3,
+                  x: 0,
+                }}
+                transition={{ duration: 0.5, delay: (i + 1) * 0.15 }}
                 className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-colors ${
                   isActive ? "bg-accent/10 border border-accent/20" : isDone ? "bg-primary-foreground/5" : ""
                 }`}
               >
-                <step.icon className={`w-4 h-4 flex-shrink-0 ${isDone ? "text-accent" : isActive ? "text-accent animate-pulse-soft" : "text-primary-foreground/30"}`} />
+                <step.icon
+                  className={`w-4 h-4 flex-shrink-0 ${
+                    isDone ? "text-accent" : isActive ? "text-accent animate-pulse-soft" : "text-primary-foreground/30"
+                  }`}
+                />
                 <span className={`text-sm ${isDone ? "text-accent" : isActive ? "text-primary-foreground" : "text-primary-foreground/30"}`}>
                   {step.label}
                 </span>
