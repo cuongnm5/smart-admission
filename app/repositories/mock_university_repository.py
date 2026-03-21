@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 from pathlib import Path
 from typing import List, Sequence
@@ -85,12 +86,17 @@ class MockUniversityRepository(UniversityRepository):
             self._data_file = data_file
         else:
             data_dir = Path(__file__).resolve().parents[1] / "data"
+            csv_file = data_dir / "universities_master.csv"
             preferred = data_dir / "clean_universities.jsonl"
             legacy = data_dir / "universities.json"
-            self._data_file = preferred if preferred.exists() else legacy
+            # Prefer CSV (has proper university names), fall back to JSONL/JSON
+            self._data_file = csv_file if csv_file.exists() else (preferred if preferred.exists() else legacy)
         self._universities = self._load_data()
 
     def _load_data(self) -> List[UniversityProfile]:
+        if self._data_file.suffix == ".csv":
+            return self._load_csv()
+
         if self._data_file.suffix == ".jsonl":
             raw: List[dict] = []
             with self._data_file.open("r", encoding="utf-8") as file:
@@ -125,6 +131,52 @@ class MockUniversityRepository(UniversityRepository):
         with self._data_file.open("r", encoding="utf-8") as file:
             raw = json.load(file)
         return [UniversityProfile.model_validate(item) for item in raw]
+
+    def _load_csv(self) -> List[UniversityProfile]:
+        universities: List[UniversityProfile] = []
+        with self._data_file.open("r", encoding="utf-8") as file:
+            for index, row in enumerate(csv.DictReader(file), start=1):
+                # Skip rows without the minimum required numeric fields
+                try:
+                    admission_rate = float(row.get("admission_rate") or 0)
+                    sat_avg = float(row.get("sat_avg") or 0)
+                    tuition_out = float(row.get("tuition_out_of_state") or 0)
+                    tuition_in = float(row.get("tuition_in_state") or 0)
+                except (ValueError, TypeError):
+                    continue
+                if not (0 < admission_rate <= 1 and sat_avg > 0 and tuition_out > 0):
+                    continue
+
+                name = row.get("name", "").strip()
+                if not name:
+                    continue
+
+                university_id = (
+                    name.lower()
+                    .replace(" ", "_")
+                    .replace("&", "and")
+                    .replace(",", "")
+                    .replace("'", "")
+                    .replace("/", "_")
+                    .replace("-", "_")
+                    [:60]
+                )
+
+                item = {
+                    "university_id": university_id,
+                    "name": name,
+                    "admissio_rate": admission_rate,
+                    "sat_avg": sat_avg,
+                    "tution_in_state": tuition_in,
+                    "tution_out_of_state": tuition_out,
+                    "programs_offered": row.get("programs_offered", ""),
+                    "top_programs": row.get("top_programs", ""),
+                }
+                try:
+                    universities.append(UniversityProfile.model_validate(item))
+                except Exception:
+                    continue
+        return universities
 
     def list_universities(self) -> Sequence[UniversityProfile]:
         return self._universities
