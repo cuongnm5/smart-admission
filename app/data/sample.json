@@ -1,0 +1,165 @@
+{
+  "student_id": "u001",
+  "academic": {
+    "gpa": [
+      { "year": "Grade 10", "value": 3.7, "scale": 4.0 },
+      { "year": "Grade 11", "value": 3.9, "scale": 4.0 },
+      { "year": "Grade 12", "value": 3.95, "scale": 4.0 }
+    ],
+    "class_rank": {
+      "value": 8,
+      "total_students": 180
+    },
+    "school_profile": {
+      "school_name": "Le Hong Phong High School for the Gifted",
+      "school_type": "specialized",
+      "location": "Ho Chi Minh City, Vietnam",
+      "description": "Top specialized high school with strong STEM focus"
+    },
+    "transcript": [
+      {
+        "year": "Grade 10",
+        "subjects": [
+          { "subject": "Math", "grade": 9.2, "max_grade": 10, "level": "advanced" },
+          { "subject": "Physics", "grade": 9.0, "max_grade": 10, "level": "advanced" },
+          { "subject": "English", "grade": 8.5, "max_grade": 10, "level": "standard" }
+        ]
+      },
+      {
+        "year": "Grade 11",
+        "subjects": [
+          { "subject": "Math", "grade": 9.6, "max_grade": 10, "level": "advanced" },
+          { "subject": "Physics", "grade": 9.4, "max_grade": 10, "level": "advanced" },
+          { "subject": "English", "grade": 8.8, "max_grade": 10, "level": "standard" }
+        ]
+      },
+      {
+        "year": "Grade 12",
+        "subjects": [
+          { "subject": "Math", "grade": 9.8, "max_grade": 10, "level": "advanced" },
+          { "subject": "Physics", "grade": 9.6, "max_grade": 10, "level": "advanced" },
+          { "subject": "English", "grade": 9.0, "max_grade": 10, "level": "standard" }
+        ]
+      }
+    ]
+  },
+  "test_scores": {
+    "english_tests": [
+      {
+        "type": "IELTS",
+        "score": 7.5,
+        "section_scores": {
+          "listening": 8.0,
+          "reading": 7.5,
+          "writing": 7.0,
+          "speaking": 7.0
+        }
+      }
+    ],
+    "sat": {
+      "total": 1480,
+      "math": 770,
+      "reading_writing": 710
+    },
+    "act": {
+      "composite": null,
+      "sections": {}
+    },
+    "ap_ib": [
+      { "subject": "AP Calculus AB", "score": 5 },
+      { "subject": "AP Computer Science A", "score": 5 }
+    ]
+  },
+  "intended_major": "Computer Science",
+  "extracurriculars": [
+    {
+      "activity_name": "Coding Club",
+      "role": "President",
+      "organization": "School Club",
+      "start_date": "2022-09",
+      "end_date": "2024-05",
+      "hours_per_week": 6,
+      "description": "Led 40 members, organized internal hackathons and coding workshops"
+    },
+    {
+      "activity_name": "Volunteer Teaching",
+      "role": "Tutor",
+      "organization": "Local NGO",
+      "start_date": "2023-01",
+      "end_date": "2024-01",
+      "hours_per_week": 4,
+      "description": "Taught basic programming for underprivileged students"
+    }
+  ],
+  "leadership": [
+    {
+      "position": "President",
+      "organization": "Coding Club",
+      "description": "Managed team, planned events, and led projects",
+      "duration": "2 years"
+    }
+  ],
+  "awards": [
+    {
+      "award_name": "National Informatics Olympiad",
+      "organizer": "Ministry of Education",
+      "level": "national",
+      "year": 2024,
+      "description": "Top 10 nationwide"
+    }
+  ],
+  "projects": [
+    {
+      "project_name": "AI Chatbot for Students",
+      "role": "Developer",
+      "description": "Built chatbot to help students with homework using NLP",
+      "link": "https://github.com/example/chatbot",
+      "start_date": "2023-06",
+      "end_date": "2023-12"
+    }
+  ],
+  "essays": {
+    "personal_statement": {
+      "content": "Story about growing passion for technology and desire to use AI for education"
+    },
+    "supplemental_essays": [
+      {
+        "school": "University of California, Berkeley",
+        "prompt": "Why this major?",
+        "content": "Explained interest in CS and research opportunities at Berkeley"
+      }
+    ]
+  },
+  "recommendation_letters": [
+    {
+      "from": "Mr. Nguyen Van A",
+      "role": "Math Teacher",
+      "relationship_duration": "2 years",
+      "content_summary": "Strong academic performance, excellent problem-solving skills"
+    },
+    {
+      "from": "Ms. Tran Thi B",
+      "role": "Counselor",
+      "relationship_duration": "3 years",
+      "content_summary": "Highly motivated student with leadership qualities"
+    }
+  ],
+  "financial": {
+    "budget_per_year": 25000,
+    "currency": "USD",
+    "need_scholarship": true,
+    "scholarship_expectation_percent": 50,
+    "family_income_range": "20000-30000 USD/year"
+  },
+  "preferences": {
+    "dream_major": "Computer Science",
+    "target_schools": [
+      "University of California, Berkeley",
+      "University of Texas at Austin",
+      "San Jose State University"
+    ],
+    "preferred_locations": ["California", "Texas"],
+    "ranking_preference": "Top 50",
+    "school_type_preference": "public"
+  }
+}
