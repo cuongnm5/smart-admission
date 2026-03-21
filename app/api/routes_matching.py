@@ -5,16 +5,16 @@ from functools import lru_cache
 from fastapi import APIRouter, Depends
 
 from app.core.config import MatchingSettings, get_settings
+from app.components.matching.services.consultant_payload_builder import ConsultantPayloadBuilder
+from app.components.matching.services.expert_rubric import ExpertRubricService
+from app.components.matching.services.feature_builder import FeatureBuilder
+from app.components.matching.services.llm_scorer import LLMScorer
+from app.components.matching.services.matching_service import MatchingService
+from app.components.matching.services.profile_normalizer import ProfileNormalizer
+from app.components.matching.services.reranker import Reranker
 from app.repositories.mock_university_repository import MockUniversityRepository
 from app.schemas.request import StudentMatchRequest
 from app.schemas.response import MatchingResponse
-from app.services.consultant_payload_builder import ConsultantPayloadBuilder
-from app.services.expert_rubric import ExpertRubricService
-from app.services.feature_builder import FeatureBuilder
-from app.services.llm_scorer import LLMScorer
-from app.services.matching_service import MatchingService
-from app.services.profile_normalizer import ProfileNormalizer
-from app.services.reranker import Reranker
 
 router = APIRouter(prefix="/v1/matching", tags=["matching"])
 

@@ -8,7 +8,7 @@ This example demonstrates:
 4. Customizing criteria and weights
 """
 
-from .student_profile import (
+from .dto.student_profile import (
     StudentProfile,
     AcademicProfile,
     TestScore,
@@ -19,7 +19,7 @@ from .student_profile import (
     ExtracurricularActivity,
     ResidencyStatus,
 )
-from .config import (
+from .dto.config import (
     create_default_matching_engine_config,
     CriteriaWeightsConfig,
     CriterionConfig,
@@ -27,7 +27,7 @@ from .config import (
     RankingWeightsConfig,
     MatchingEngineConfig,
 )
-from .matching_engine import MatchingEngine
+from .services.summary_service import MatchingEngine
 
 
 class MockLLMClient:

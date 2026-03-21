@@ -6,11 +6,11 @@ from typing import Protocol
 
 from pydantic import ValidationError
 
-from app.domain.enums import CompetitivenessLevel, MatchBucket
+from app.domain.enums import MatchBucket
 from app.domain.models import DeterministicFeaturePacket, HardFilterResult, LLMScore, NormalizedStudentProfile, RubricConfig, UniversityProfile
-from app.prompts.llm_match_scoring_prompt import build_match_scoring_prompt
 from app.schemas.request import StudentMatchRequest
-from app.services.feature_builder import FeatureBuilder
+from app.components.matching.prompts.llm_match_scoring_prompt import build_match_scoring_prompt
+from app.components.matching.services.feature_builder import FeatureBuilder
 
 LOGGER = logging.getLogger(__name__)
 
@@ -78,15 +78,6 @@ class LLMScorer:
         affordability_fit = self._feature_builder.affordability_fit_score(features.affordability_gap)
         profile_alignment = int(round(features.profile_strength_score))
         competitiveness_fit = max(0, int(round(100.0 - features.competitiveness_penalty)))
-
-        if (
-            student.intended_major.lower() == "computer science"
-            and university.major_competitiveness.get(student.intended_major) == CompetitivenessLevel.VERY_HIGH
-        ):
-            competitiveness_fit = max(
-                0,
-                int(round(competitiveness_fit / rubric.cs_very_high_competitiveness_penalty_multiplier)),
-            )
 
         overall = int(
             round(

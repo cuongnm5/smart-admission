@@ -6,7 +6,7 @@ with real-world student data from an international student (Vietnam).
 """
 
 import json
-from matching_engine import StudentProfile
+from summary import StudentProfile
 
 # Vietnamese student data (from your provided JSON)
 VIETNAMESE_STUDENT_DATA = {

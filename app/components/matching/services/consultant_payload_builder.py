@@ -4,6 +4,7 @@ from typing import Sequence
 
 from app.domain.models import CandidateEvaluation
 from app.schemas.response import MatchingMeta, MatchingResponse
+from app.components.matching.services.university_identity import build_university_id
 
 
 class ConsultantPayloadBuilder:
@@ -15,7 +16,7 @@ class ConsultantPayloadBuilder:
         scored_count: int,
         rubric_version: str,
     ) -> MatchingResponse:
-        top_candidates = [evaluation.university.university_id for evaluation in ranked_candidates]
+        top_candidates = [build_university_id(evaluation.university) for evaluation in ranked_candidates]
 
         meta = MatchingMeta(
             retrieved_count=retrieved_count,

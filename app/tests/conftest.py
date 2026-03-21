@@ -3,15 +3,15 @@ from __future__ import annotations
 import pytest
 
 from app.core.config import MatchingSettings
+from app.components.matching.services.consultant_payload_builder import ConsultantPayloadBuilder
+from app.components.matching.services.expert_rubric import ExpertRubricService
+from app.components.matching.services.feature_builder import FeatureBuilder
+from app.components.matching.services.llm_scorer import LLMScorer
+from app.components.matching.services.matching_service import MatchingService
+from app.components.matching.services.profile_normalizer import ProfileNormalizer
+from app.components.matching.services.reranker import Reranker
 from app.repositories.mock_university_repository import MockUniversityRepository
 from app.schemas.request import StudentMatchRequest
-from app.services.consultant_payload_builder import ConsultantPayloadBuilder
-from app.services.expert_rubric import ExpertRubricService
-from app.services.feature_builder import FeatureBuilder
-from app.services.llm_scorer import LLMScorer
-from app.services.matching_service import MatchingService
-from app.services.profile_normalizer import ProfileNormalizer
-from app.services.reranker import Reranker
 
 
 @pytest.fixture

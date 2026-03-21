@@ -1,60 +1,86 @@
-# Student Profile
-from .student_profile import (
-    StudentProfile,
-    AcademicProfile,
-    TestScore,
-    TestType,
-    EssayProfile,
-    PreferencesProfile,
-    FinancialProfile,
-    ExtracurricularActivity,
-    ResidencyStatus,
-)
-
-# Configuration
+from .acceptance_calculator import AcceptanceCalculator, ApplicationScores
 from .config import (
-    MatchingEngineConfig,
     CriteriaWeightsConfig,
     CriterionConfig,
     CriterionType,
-    RankingWeightsConfig,
-    LLMPromptConfig,
     EvaluationCriterionPrompt,
-    create_default_matching_engine_config,
+    LLMPromptConfig,
+    MatchingEngineConfig,
+    RankingWeightsConfig,
     create_default_criteria_config,
+    create_default_matching_engine_config,
     create_default_prompt_config,
     create_default_ranking_weights,
 )
-
-# Calculators
-from .suitability_calculator import SuitabilityCalculator, SuitabilityScore
-from .acceptance_calculator import AcceptanceCalculator, ApplicationScores
-
-# Ranking
 from .ranking_engine import RankingEngine, UniversityRanking
+from .student_profile import (
+    APScore,
+    ACTScore,
+    AcademicProfile,
+    Award,
+    ClassRank,
+    EnglishTestScore,
+    Essay,
+    EssayProfile,
+    ExtracurricularActivity,
+    FinancialProfile,
+    GPA,
+    IBScore,
+    Leadership,
+    PreferencesProfile,
+    Project,
+    RecommendationLetter,
+    ResidencyStatus,
+    SATScore,
+    SchoolProfile,
+    SchoolType,
+    StudentProfile,
+    TestScoresProfile,
+    TestType,
+    TranscriptSubject,
+    TranscriptYear,
+)
+from .suitability_calculator import SuitabilityCalculator, SuitabilityScore
 
-# Import MatchingEngine and MatchResult after other modules to avoid circular imports
+
 def __getattr__(name):
     if name == "MatchingEngine":
-        from .matching_engine import MatchingEngine
+        from .summary_service import MatchingEngine
+
         return MatchingEngine
-    elif name == "MatchResult":
-        from .matching_engine import MatchResult
+    if name == "MatchResult":
+        from .summary_service import MatchResult
+
         return MatchResult
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
+
 __all__ = [
-    # Student Profile
     "StudentProfile",
     "AcademicProfile",
-    "TestScore",
-    "TestType",
+    "GPA",
+    "ClassRank",
+    "SchoolProfile",
+    "SchoolType",
+    "TranscriptSubject",
+    "TranscriptYear",
+    "EnglishTestScore",
+    "SATScore",
+    "ACTScore",
+    "APScore",
+    "IBScore",
+    "TestScoresProfile",
     "EssayProfile",
+    "Essay",
+    "RecommendationLetter",
     "PreferencesProfile",
     "FinancialProfile",
     "ExtracurricularActivity",
+    "Leadership",
+    "Award",
+    "Project",
     "ResidencyStatus",
-    # Configuration
+    "TestType",
     "MatchingEngineConfig",
     "CriteriaWeightsConfig",
     "CriterionConfig",
@@ -66,15 +92,12 @@ __all__ = [
     "create_default_criteria_config",
     "create_default_prompt_config",
     "create_default_ranking_weights",
-    # Calculators
     "SuitabilityCalculator",
     "SuitabilityScore",
     "AcceptanceCalculator",
     "ApplicationScores",
-    # Ranking
     "RankingEngine",
     "UniversityRanking",
-    # Main Engine
     "MatchingEngine",
     "MatchResult",
 ]

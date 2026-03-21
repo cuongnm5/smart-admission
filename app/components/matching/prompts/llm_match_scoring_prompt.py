@@ -20,13 +20,12 @@ def build_match_scoring_prompt(
 
     evidence = {
         "university_summary": {
-            "university_id": university.university_id,
-            "name": university.name,
-            "type": university.type,
-            "region": university.region,
-            "selectivity_band": university.selectivity_band,
-            "major_competitiveness": university.major_competitiveness,
-            "summary_text": university.summary_text,
+            "admissio_rate": university.admissio_rate,
+            "sat_avg": university.sat_avg,
+            "tution_in_state": university.tution_in_state,
+            "tution_out_of_state": university.tution_out_of_state,
+            "programs_offered": university.programs_offered,
+            "top_programs": university.top_programs,
         },
         "rubric": rubric.model_dump(),
     }

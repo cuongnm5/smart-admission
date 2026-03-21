@@ -1,4 +1,4 @@
-from app.services.profile_normalizer import ProfileNormalizer
+from app.components.matching.services.profile_normalizer import ProfileNormalizer
 
 
 def test_profile_normalization(strong_cs_applicant) -> None:

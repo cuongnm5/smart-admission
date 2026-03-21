@@ -1,5 +1,5 @@
-from app.services.hard_filter_engine import HardFilterEngine
-from app.services.profile_normalizer import ProfileNormalizer
+from app.components.matching.services.hard_filter_engine import HardFilterEngine
+from app.components.matching.services.profile_normalizer import ProfileNormalizer
 
 
 def test_hard_filter_rejects_budget_constrained_candidate(budget_constrained_applicant, repository) -> None:

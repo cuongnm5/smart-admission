@@ -1,5 +1,5 @@
-from app.services.feature_builder import FeatureBuilder
-from app.services.profile_normalizer import ProfileNormalizer
+from app.components.matching.services.feature_builder import FeatureBuilder
+from app.components.matching.services.profile_normalizer import ProfileNormalizer
 
 
 def test_feature_builder_outputs_expected_fields(strong_cs_applicant, repository) -> None:

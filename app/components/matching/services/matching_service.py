@@ -7,14 +7,15 @@ from app.domain.models import CandidateEvaluation
 from app.repositories.base import UniversityRepository
 from app.schemas.request import StudentMatchRequest
 from app.schemas.response import MatchingResponse
-from app.services.candidate_retrieval import CandidateRetrievalService
-from app.services.consultant_payload_builder import ConsultantPayloadBuilder
-from app.services.expert_rubric import ExpertRubricService
-from app.services.feature_builder import FeatureBuilder
-from app.services.hard_filter_engine import HardFilterEngine
-from app.services.llm_scorer import LLMScorer
-from app.services.profile_normalizer import ProfileNormalizer
-from app.services.reranker import Reranker
+from app.components.matching.services.candidate_retrieval import CandidateRetrievalService
+from app.components.matching.services.consultant_payload_builder import ConsultantPayloadBuilder
+from app.components.matching.services.expert_rubric import ExpertRubricService
+from app.components.matching.services.feature_builder import FeatureBuilder
+from app.components.matching.services.hard_filter_engine import HardFilterEngine
+from app.components.matching.services.llm_scorer import LLMScorer
+from app.components.matching.services.profile_normalizer import ProfileNormalizer
+from app.components.matching.services.reranker import Reranker
+from app.components.matching.services.university_identity import build_university_id
 
 LOGGER = logging.getLogger(__name__)
 
@@ -91,13 +92,14 @@ class MatchingService:
         hard_filter_pass_count = 0
 
         for university in candidates:
+            university_id = build_university_id(university)
             hard_filter_result = self._hard_filter_engine.evaluate(student, university)
             LOGGER.info(
                 "matching_step_hard_filter_evaluated",
                 extra={
                     "step": "hard_filter_engine",
                     "student_id": student.student_id,
-                    "university_id": university.university_id,
+                    "university_id": university_id,
                     "passed": hard_filter_result.passed,
                     "reject_reason": hard_filter_result.reject_reason,
                     "trace": [item.model_dump(by_alias=True) for item in hard_filter_result.trace],
@@ -113,7 +115,7 @@ class MatchingService:
                 extra={
                     "step": "feature_builder",
                     "student_id": student.student_id,
-                    "university_id": university.university_id,
+                    "university_id": university_id,
                     "features": features.model_dump(),
                 },
             )
@@ -131,7 +133,7 @@ class MatchingService:
                 extra={
                     "step": "llm_scoring_engine",
                     "student_id": student.student_id,
-                    "university_id": university.university_id,
+                    "university_id": university_id,
                     "score": score.model_dump(),
                 },
             )
@@ -154,7 +156,7 @@ class MatchingService:
                 "input_count": len(evaluations),
                 "ranked_count": len(ranked),
                 "top_k": self._settings.top_k,
-                "top_university_ids": [item.university.university_id for item in ranked[:5]],
+                "top_university_ids": [build_university_id(item.university) for item in ranked[:5]],
             },
         )
 

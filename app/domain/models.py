@@ -1,30 +1,181 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.enums import CompetitivenessLevel, MatchBucket, SelectivityBand, UniversityType
 
 
 class UniversityProfile(BaseModel):
-    university_id: str
-    name: str
-    state: str
-    region: str
-    type: UniversityType
-    accepts_international_students: bool
-    majors: List[str]
-    entry_terms: List[str]
-    min_gpa: float = Field(ge=0.0)
-    competitive_gpa: float = Field(ge=0.0)
-    ielts_min: float = Field(ge=0.0)
-    total_cost_usd: float = Field(ge=0.0)
-    max_merit_usd: float = Field(ge=0.0)
-    merit_for_internationals: bool
-    selectivity_band: SelectivityBand
-    major_competitiveness: Dict[str, CompetitivenessLevel]
-    summary_text: str
+    model_config = ConfigDict(extra="allow")
+
+    admissio_rate: float = Field(ge=0.0, le=1.0)
+    sat_avg: float = Field(ge=0.0)
+    tution_in_state: float = Field(ge=0.0)
+    tution_out_of_state: float = Field(ge=0.0)
+    programs_offered: str
+    top_programs: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_clean_university_data(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+
+        normalized = dict(data)
+
+        selectivity_fallback = {
+            "high": 0.2,
+            "medium": 0.5,
+            "low": 0.8,
+        }
+        sat_fallback = {
+            "high": 1400.0,
+            "medium": 1200.0,
+            "low": 1000.0,
+        }
+        selectivity_raw = str(normalized.get("selectivity_band", "medium")).lower()
+
+        def first_non_null(*values: Any) -> Any:
+            for value in values:
+                if value is not None:
+                    return value
+            return None
+
+        normalized["admissio_rate"] = first_non_null(
+            normalized.get("admissio_rate"),
+            normalized.get("admission_rate"),
+            normalized.get("acceptance_rate"),
+            selectivity_fallback.get(selectivity_raw, 0.5),
+        )
+
+        normalized["sat_avg"] = first_non_null(
+            normalized.get("sat_avg"),
+            normalized.get("sat_average"),
+            normalized.get("avg_sat"),
+            sat_fallback.get(selectivity_raw, 1200.0),
+        )
+
+        total_cost = first_non_null(normalized.get("total_cost_usd"), normalized.get("total_cost"), 0.0)
+        normalized["tution_in_state"] = first_non_null(
+            normalized.get("tution_in_state"),
+            normalized.get("tuition_in_state"),
+            normalized.get("in_state_tuition"),
+            total_cost,
+        )
+
+        normalized["tution_out_of_state"] = first_non_null(
+            normalized.get("tution_out_of_state"),
+            normalized.get("tuition_out_of_state"),
+            normalized.get("out_of_state_tuition"),
+            total_cost,
+        )
+
+        programs_value = normalized.get("programs_offered", normalized.get("majors", ""))
+        if isinstance(programs_value, list):
+            normalized["programs_offered"] = ", ".join(str(item).strip() for item in programs_value if str(item).strip())
+        else:
+            normalized["programs_offered"] = str(programs_value or "")
+
+        top_programs_value = normalized.get("top_programs", "")
+        if not top_programs_value and normalized["programs_offered"]:
+            head_programs = [part.strip() for part in normalized["programs_offered"].split(",") if part.strip()][:3]
+            top_programs_value = ", ".join(head_programs)
+        if isinstance(top_programs_value, list):
+            normalized["top_programs"] = ", ".join(str(item).strip() for item in top_programs_value if str(item).strip())
+        else:
+            normalized["top_programs"] = str(top_programs_value or "")
+
+        return normalized
+
+    @property
+    def programs_offered_list(self) -> List[str]:
+        return [part.strip() for part in self.programs_offered.split(",") if part.strip()]
+
+    @property
+    def top_programs_list(self) -> List[str]:
+        return [part.strip() for part in self.top_programs.split(",") if part.strip()]
+
+    @property
+    def university_id(self) -> str:
+        extra = self.__pydantic_extra__ or {}
+        value = extra.get("university_id")
+        if isinstance(value, str) and value:
+            return value
+        return f"uni-{int(self.sat_avg)}-{int(self.tution_in_state)}"
+
+    @property
+    def name(self) -> str:
+        extra = self.__pydantic_extra__ or {}
+        value = extra.get("name")
+        if isinstance(value, str) and value:
+            return value
+        return "Unknown University"
+
+    @property
+    def state(self) -> str:
+        return "unknown"
+
+    @property
+    def region(self) -> str:
+        return "unknown"
+
+    @property
+    def type(self) -> UniversityType:
+        return UniversityType.PUBLIC
+
+    @property
+    def accepts_international_students(self) -> bool:
+        return True
+
+    @property
+    def majors(self) -> List[str]:
+        return self.programs_offered_list
+
+    @property
+    def entry_terms(self) -> List[str]:
+        return ["fall"]
+
+    @property
+    def min_gpa(self) -> float:
+        return 0.0
+
+    @property
+    def competitive_gpa(self) -> float:
+        return 0.0
+
+    @property
+    def ielts_min(self) -> float:
+        return 0.0
+
+    @property
+    def total_cost_usd(self) -> float:
+        return max(self.tution_in_state, self.tution_out_of_state)
+
+    @property
+    def max_merit_usd(self) -> float:
+        return 0.0
+
+    @property
+    def merit_for_internationals(self) -> bool:
+        return False
+
+    @property
+    def selectivity_band(self) -> SelectivityBand:
+        if self.admissio_rate <= 0.2:
+            return SelectivityBand.HIGH
+        if self.admissio_rate <= 0.5:
+            return SelectivityBand.MEDIUM
+        return SelectivityBand.LOW
+
+    @property
+    def major_competitiveness(self) -> Dict[str, CompetitivenessLevel]:
+        return {major: CompetitivenessLevel.MEDIUM for major in self.majors}
+
+    @property
+    def summary_text(self) -> str:
+        return f"Top programs: {self.top_programs}. Admission rate: {self.admissio_rate}"
 
 
 class NormalizedStudentProfile(BaseModel):

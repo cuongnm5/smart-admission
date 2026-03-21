@@ -17,6 +17,10 @@ Production-oriented deterministic-first matching module for a Smart University S
 Layered design with strict responsibility boundaries:
 
 - `app/api/`: FastAPI routes only (no business logic)
+- `app/components/`: system components grouped by responsibility
+	- `matching/`: stage-1 matching component (top-20 university IDs)
+	- `summary/`: stage-2 analysis component (moved from top-level `summary/`)
+	- `pipeline/`: orchestration component combining stage 1 + stage 2
 - `app/schemas/`: request/response contracts (Pydantic)
 - `app/domain/`: internal typed models and enums
 - `app/repositories/`: datastore abstraction + mock repository implementation
@@ -59,6 +63,14 @@ Health check:
 
 ```zsh
 curl http://127.0.0.1:8000/health
+```
+
+Merged system pipeline endpoint:
+
+```zsh
+curl -X POST http://127.0.0.1:8000/v1/pipeline/match-and-analyze \
+	-H "Content-Type: application/json" \
+	-d @app/data/sample.json
 ```
 
 Matching request:
