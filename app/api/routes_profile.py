@@ -56,7 +56,7 @@ async def parse_pdf(file: UploadFile) -> ParsePDFResponse:
         raise HTTPException(status_code=413, detail="File too large. Maximum size is 10 MB.")
 
     try:
-        request = parse_pdf_to_request(pdf_bytes)
+        request, extra_missing = parse_pdf_to_request(pdf_bytes)
     except EnvironmentError as exc:
         LOGGER.error("pdf_parse_env_error", extra={"error": str(exc)})
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -67,7 +67,7 @@ async def parse_pdf(file: UploadFile) -> ParsePDFResponse:
         LOGGER.exception("pdf_parse_unexpected_error")
         return ParsePDFResponse(error=f"Failed to parse PDF: {exc}")
 
-    missing = _find_missing(request)
+    missing = list(dict.fromkeys(_find_missing(request) + extra_missing))
     return ParsePDFResponse(
         data=request.model_dump(by_alias=True),
         missing_fields=missing,

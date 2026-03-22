@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 import logging
 import os
+from typing import List, Tuple
 
 from openai import OpenAI
+from pydantic import ValidationError
 
 from app.schemas.request import StudentMatchRequest
 
@@ -71,7 +73,33 @@ Return ONLY the JSON object — no markdown, no explanation, no code fences.
 """
 
 
-def parse_pdf_to_request(pdf_bytes: bytes) -> StudentMatchRequest:
+def _sanitize_data(data: dict) -> None:
+    """Replace None with '' for required string fields that the LLM may return as null."""
+    str_list_fields = {
+        "projects": ["start_date", "end_date", "role", "description"],
+        "extracurriculars": ["start_date", "end_date", "role", "organization", "description"],
+        "leadership": ["position", "organization", "description", "duration"],
+        "awards": ["award_name", "organizer", "level", "description"],
+    }
+    for key, fields in str_list_fields.items():
+        for item in data.get(key) or []:
+            if isinstance(item, dict):
+                for field in fields:
+                    if item.get(field) is None:
+                        item[field] = ""
+
+
+def parse_pdf_to_request(pdf_bytes: bytes) -> Tuple[StudentMatchRequest, List[str]]:
+    """
+    Returns (validated_request, extra_missing_fields).
+
+    extra_missing_fields contains dot-path strings for fields that failed
+    validation and were replaced with defaults so that the UI can highlight
+    them in the manual-input form.
+
+    Raises EnvironmentError if the OpenAI key is missing.
+    Raises ValueError only if the LLM response is not parseable JSON at all.
+    """
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         raise EnvironmentError("OPENAI_API_KEY is not set.")
@@ -118,4 +146,23 @@ def parse_pdf_to_request(pdf_bytes: bytes) -> StudentMatchRequest:
     if not data.get("financial"):
         data["financial"] = {"budget_per_year": 60000, "currency": "USD", "need_scholarship": False}
 
-    return StudentMatchRequest.model_validate(data)
+    _sanitize_data(data)
+
+    try:
+        return StudentMatchRequest.model_validate(data), []
+    except ValidationError as exc:
+        # Collect paths that failed so the UI can ask the user to fill them in
+        extra_missing = [".".join(str(x) for x in err["loc"]) for err in exc.errors()]
+        LOGGER.warning(
+            "pdf_parse_validation_partial",
+            extra={"missing": extra_missing, "error": str(exc)},
+        )
+        # Drop items that cannot be validated (e.g. entire list entries with bad fields)
+        # and retry with a cleaned-up version rather than failing completely.
+        for key in ("projects", "extracurriculars", "leadership", "awards"):
+            if any(p.startswith(key) for p in extra_missing):
+                data[key] = []
+        try:
+            return StudentMatchRequest.model_validate(data), extra_missing
+        except ValidationError as exc2:
+            raise ValueError(f"Could not build a valid profile from this PDF: {exc2}") from exc2

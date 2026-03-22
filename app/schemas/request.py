@@ -75,10 +75,10 @@ class ExtracurricularActivity(BaseModel):
     activity_name: str
     role: str
     organization: str
-    start_date: str
-    end_date: str
-    hours_per_week: float = Field(ge=0.0)
-    description: str
+    start_date: Optional[str] = ""
+    end_date: Optional[str] = ""
+    hours_per_week: float = Field(default=0.0, ge=0.0)
+    description: str = ""
 
 
 class LeadershipExperience(BaseModel):
@@ -98,11 +98,11 @@ class AwardRecord(BaseModel):
 
 class ProjectRecord(BaseModel):
     project_name: str
-    role: str
-    description: str
+    role: str = ""
+    description: str = ""
     link: Optional[str] = None
-    start_date: str
-    end_date: str
+    start_date: Optional[str] = ""
+    end_date: Optional[str] = ""
 
 
 class PersonalStatement(BaseModel):
