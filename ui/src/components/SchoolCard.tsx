@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, MapPin, Award, DollarSign, GraduationCap, CheckCircle2, XCircle, BookOpen } from "lucide-react";
+import { ChevronDown, MapPin, Award, DollarSign, GraduationCap, CheckCircle2, XCircle, BookOpen, Hash } from "lucide-react";
 import type { SchoolResult } from "@/lib/admissionEngine";
 
 interface SchoolCardProps {
