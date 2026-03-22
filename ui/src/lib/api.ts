@@ -159,50 +159,62 @@ function toStudentMatchRequest(profile: StudentProfile): StudentMatchRequest {
 export function pipelineResponseToSchools(response: UniversityPipelineResponse): SchoolResult[] {
   const { ranking_summary, detailed_analysis } = response.stage_2_analysis;
 
-  return ranking_summary.slice(0, 10).map((item, index) => {
-    const id = (item.university_id ?? item.id ?? item.name ?? `University ${index + 1}`) as string;
-    const details = (detailed_analysis[id] ?? {}) as Record<string, unknown>;
+  // detailed_analysis has shape { student, criteria_config, ranking_config, universities: [...] }
+  // The universities array is parallel to ranking_summary (same order, same length).
+  const detailUniversities = (
+    Array.isArray((detailed_analysis as Record<string, unknown>).universities)
+      ? (detailed_analysis as Record<string, unknown>).universities
+      : []
+  ) as Record<string, unknown>[];
 
+  return ranking_summary.slice(0, 10).map((item, index) => {
+    // Prefer the same-index entry from detailed_analysis.universities; fall back to empty.
+    const details = (detailUniversities[index] ?? {}) as Record<string, unknown>;
+
+    // acceptance_probability is on 0–100 scale in the backend response.
     const probability = Math.round(
-      typeof item.probability === "number" ? item.probability
+      typeof item.acceptance_probability === "number" ? item.acceptance_probability
+      : typeof item.probability === "number" ? item.probability
       : typeof item.score === "number" ? item.score
-      : typeof item.match_score === "number" ? item.match_score
       : Math.max(5, 80 - index * 7)
     );
 
-    const category = (() => {
-      const raw = (item.category ?? item.tier ?? details.category ?? details.tier) as string | undefined;
-      if (raw) {
-        const lower = raw.toLowerCase();
-        if (lower.includes("reach")) return "reach" as const;
-        if (lower.includes("safe")) return "safety" as const;
-        return "target" as const;
-      }
-      return (probability >= 65 ? "safety" : probability >= 30 ? "target" : "reach") as "reach" | "target" | "safety";
-    })();
+    const category = (
+      probability >= 65 ? "safety" : probability >= 30 ? "target" : "reach"
+    ) as "reach" | "target" | "safety";
 
+    // criterion_analysis[].reasoning contains LLM-generated explanations per criterion.
     const explanation: string[] = (() => {
-      const raw = item.explanation ?? item.reasons ?? details.explanation ?? details.strengths;
+      const criteria = details.criterion_analysis;
+      if (Array.isArray(criteria) && criteria.length > 0) {
+        return (criteria as Record<string, unknown>[])
+          .filter((c) => typeof c.reasoning === "string" && c.reasoning.trim())
+          .map((c) => {
+            const label = typeof c.criterion === "string" ? `${c.criterion}: ` : "";
+            return `${label}${c.reasoning as string}`;
+          });
+      }
+      // fallback: try flat explanation fields on the ranking_summary item
+      const raw = item.explanation ?? item.reasons;
       if (Array.isArray(raw)) return (raw as unknown[]).map(String);
       if (typeof raw === "string") return [raw];
-      return [`Match rank #${index + 1} based on your academic and extracurricular profile`];
+      return [`Ranked #${index + 1} by combined suitability and acceptance probability`];
     })();
 
     return {
-      name: String(item.university_name ?? item.name ?? id),
+      name: String(item.university_name ?? item.name ?? details.name ?? `University ${index + 1}`),
       category,
       location: String(item.location ?? details.location ?? "USA"),
-      ranking: typeof item.rank === "number" ? item.rank : index + 1,
+      // qs_rank is the actual QS world ranking; rank is pipeline position.
+      ranking: typeof item.qs_rank === "number" ? item.qs_rank : typeof item.rank === "number" ? item.rank : index + 1,
       probability: Math.min(99, Math.max(1, probability)),
       explanation,
-      acceptanceRate: typeof item.acceptance_rate === "number" ? item.acceptance_rate : typeof details.acceptance_rate === "number" ? details.acceptance_rate : 0,
-      avgSAT: typeof item.avg_sat === "number" ? item.avg_sat : typeof details.avg_sat === "number" ? details.avg_sat : 0,
-      majorStrength: String(item.major_strength ?? details.major_strength ?? item.program_strength ?? "—"),
-      tuition: typeof item.tuition === "number" ? item.tuition
-        : typeof details.tuition === "number" ? details.tuition
-        : typeof item.tuition_per_year === "number" ? item.tuition_per_year
-        : typeof details.tuition_per_year === "number" ? details.tuition_per_year
-        : undefined,
+      // acceptanceRate, avgSAT, tuition are not returned by the backend pipeline;
+      // they will show as "—" for API results (only available in local fallback mode).
+      acceptanceRate: typeof item.acceptance_rate === "number" ? item.acceptance_rate : 0,
+      avgSAT: typeof item.avg_sat === "number" ? item.avg_sat : 0,
+      majorStrength: String(item.major_strength ?? details.major_strength ?? "—"),
+      tuition: typeof item.tuition === "number" ? item.tuition : undefined,
     } satisfies SchoolResult;
   });
 }
