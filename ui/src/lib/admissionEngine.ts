@@ -24,6 +24,8 @@ export interface SchoolResult {
   avgSAT: number;
   majorStrength: string;
   tuition?: number;
+  subjectRank?: number;   // e.g. #15 in CS
+  subjectLabel?: string;  // e.g. "CS", "Engineering"
 }
 
 export interface ProfileStrength {

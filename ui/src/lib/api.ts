@@ -201,20 +201,27 @@ export function pipelineResponseToSchools(response: UniversityPipelineResponse):
       return [`Ranked #${index + 1} by combined suitability and acceptance probability`];
     })();
 
+    // Build location string from city/state (preferred) or fallback
+    const city = String(item.city ?? "").trim();
+    const state = String(item.state ?? "").trim();
+    const location = city && state ? `${city}, ${state}` : city || state || String(item.location ?? "USA");
+
     return {
       name: String(item.university_name ?? item.name ?? details.name ?? `University ${index + 1}`),
       category,
-      location: String(item.location ?? details.location ?? "USA"),
-      // qs_rank is the actual QS world ranking; rank is pipeline position.
-      ranking: typeof item.qs_rank === "number" ? item.qs_rank : typeof item.rank === "number" ? item.rank : index + 1,
+      location,
+      ranking: typeof item.qs_rank === "number" ? item.qs_rank : index + 1,
       probability: Math.min(99, Math.max(1, probability)),
       explanation,
-      // acceptanceRate, avgSAT, tuition are not returned by the backend pipeline;
-      // they will show as "—" for API results (only available in local fallback mode).
-      acceptanceRate: typeof item.acceptance_rate === "number" ? item.acceptance_rate : 0,
-      avgSAT: typeof item.avg_sat === "number" ? item.avg_sat : 0,
+      acceptanceRate: typeof item.admission_rate === "number" ? item.admission_rate
+        : typeof item.acceptance_rate === "number" ? item.acceptance_rate : 0,
+      avgSAT: typeof item.sat_avg === "number" ? item.sat_avg
+        : typeof item.avg_sat === "number" ? item.avg_sat : 0,
       majorStrength: String(item.major_strength ?? details.major_strength ?? "—"),
-      tuition: typeof item.tuition === "number" ? item.tuition : undefined,
+      tuition: typeof item.tuition_per_year === "number" ? item.tuition_per_year
+        : typeof item.tuition === "number" ? item.tuition : undefined,
+      subjectRank: typeof item.subject_rank === "number" ? item.subject_rank : undefined,
+      subjectLabel: typeof item.subject_label === "string" ? item.subject_label : undefined,
     } satisfies SchoolResult;
   });
 }

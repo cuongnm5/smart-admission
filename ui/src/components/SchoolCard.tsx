@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, MapPin, Hash, DollarSign, GraduationCap, CheckCircle2, XCircle, BookOpen } from "lucide-react";
+import { ChevronDown, MapPin, Award, DollarSign, GraduationCap, CheckCircle2, XCircle, BookOpen } from "lucide-react";
 import type { SchoolResult } from "@/lib/admissionEngine";
 
 interface SchoolCardProps {
@@ -55,8 +55,20 @@ export default function SchoolCard({ school, rank }: SchoolCardProps) {
 
           {/* Location + rank */}
           <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
-            <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{school.location}</span>
-            <span className="flex items-center gap-1"><Hash className="w-3 h-3" />Rank {school.ranking}</span>
+            {school.location && school.location !== "USA" && (
+              <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{school.location}</span>
+            )}
+            {school.subjectRank ? (
+              <span className="flex items-center gap-1">
+                <Award className="w-3 h-3" />
+                Rank #{school.subjectRank} in {school.subjectLabel}
+              </span>
+            ) : school.ranking < 9999 ? (
+              <span className="flex items-center gap-1">
+                <Award className="w-3 h-3" />
+                QS #{school.ranking}
+              </span>
+            ) : null}
           </div>
 
           {/* Key stats row */}
@@ -162,10 +174,11 @@ export default function SchoolCard({ school, rank }: SchoolCardProps) {
                   </div>
                   <div className="bg-muted/30 rounded-lg px-3 py-2.5">
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
-                      <BookOpen className="w-3 h-3" /> Major Fit
+                      <Award className="w-3 h-3" />
+                      {school.subjectRank ? `Rank in ${school.subjectLabel}` : "Major Fit"}
                     </p>
                     <p className="text-sm font-bold text-foreground truncate">
-                      {school.majorStrength !== "—" ? school.majorStrength : "—"}
+                      {school.subjectRank ? `#${school.subjectRank}` : school.majorStrength !== "—" ? school.majorStrength : "—"}
                     </p>
                   </div>
                 </div>

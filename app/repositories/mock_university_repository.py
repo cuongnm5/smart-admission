@@ -171,7 +171,24 @@ class MockUniversityRepository(UniversityRepository):
                     "tution_out_of_state": tuition_out,
                     "programs_offered": row.get("programs_offered", ""),
                     "top_programs": row.get("top_programs", ""),
+                    "city": row.get("city", "").strip(),
+                    "state": row.get("state", "").strip(),
                 }
+                # Load subject-specific rankings from oedb_rank_* columns
+                for col in (
+                    "oedb_rank_accounting", "oedb_rank_business_administration",
+                    "oedb_rank_computer_science", "oedb_rank_criminal_justice",
+                    "oedb_rank_education", "oedb_rank_engineering",
+                    "oedb_rank_graphic_design", "oedb_rank_it", "oedb_rank_marketing",
+                    "oedb_rank_mba", "oedb_rank_nursing", "oedb_rank_paralegal",
+                    "oedb_rank_phd", "oedb_rank_psychology",
+                ):
+                    val = row.get(col, "").strip()
+                    if val:
+                        try:
+                            item[col] = int(float(val))
+                        except (ValueError, TypeError):
+                            pass
                 try:
                     universities.append(UniversityProfile.model_validate(item))
                 except Exception:
