@@ -119,27 +119,29 @@ export default function SchoolCard({ school, rank }: SchoolCardProps) {
             className="overflow-hidden"
           >
             <div className="px-5 pb-5 pt-1 border-t border-border space-y-5">
-              {/* Why you match */}
-              <div>
-                <div className="flex items-center gap-2 mt-4 mb-3">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Why you match</p>
+              {/* Why you match — only shown when there's meaningful content */}
+              {school.explanation.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mt-4 mb-3">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Why you match</p>
+                  </div>
+                  <ul className="space-y-2">
+                    {school.explanation.map((exp, i) => {
+                      const isPositive = !exp.toLowerCase().includes("below") && !exp.toLowerCase().includes("miss");
+                      return (
+                        <li key={i} className="flex items-start gap-2.5">
+                          {isPositive
+                            ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                            : <XCircle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+                          }
+                          <span className="text-sm text-muted-foreground leading-snug">{exp}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
-                <ul className="space-y-2">
-                  {school.explanation.map((exp, i) => {
-                    const isPositive = !exp.toLowerCase().includes("below") && !exp.toLowerCase().includes("miss");
-                    return (
-                      <li key={i} className="flex items-start gap-2.5">
-                        {isPositive
-                          ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                          : <XCircle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
-                        }
-                        <span className="text-sm text-muted-foreground leading-snug">{exp}</span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
+              )}
 
               {/* University details grid */}
               <div className="border-t border-border pt-4">

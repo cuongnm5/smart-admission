@@ -184,21 +184,24 @@ export function pipelineResponseToSchools(response: UniversityPipelineResponse):
     ) as "reach" | "target" | "safety";
 
     // criterion_analysis[].reasoning contains LLM-generated explanations per criterion.
+    // Return [] if nothing meaningful — SchoolCard hides the section when empty.
     const explanation: string[] = (() => {
       const criteria = details.criterion_analysis;
       if (Array.isArray(criteria) && criteria.length > 0) {
-        return (criteria as Record<string, unknown>[])
-          .filter((c) => typeof c.reasoning === "string" && c.reasoning.trim())
+        const lines = (criteria as Record<string, unknown>[])
+          .filter((c) => typeof c.reasoning === "string" && (c.reasoning as string).trim().length > 10)
           .map((c) => {
             const label = typeof c.criterion === "string" ? `${c.criterion}: ` : "";
             return `${label}${c.reasoning as string}`;
           });
+        if (lines.length > 0) return lines;
       }
-      // fallback: try flat explanation fields on the ranking_summary item
+      // Try flat explanation fields on the ranking_summary item
       const raw = item.explanation ?? item.reasons;
-      if (Array.isArray(raw)) return (raw as unknown[]).map(String);
-      if (typeof raw === "string") return [raw];
-      return [`Ranked #${index + 1} by combined suitability and acceptance probability`];
+      if (Array.isArray(raw) && (raw as unknown[]).length > 0) return (raw as unknown[]).map(String);
+      if (typeof raw === "string" && raw.trim().length > 10) return [raw];
+      // Nothing meaningful — caller hides the section
+      return [];
     })();
 
     // Build location string from city/state (preferred) or fallback
